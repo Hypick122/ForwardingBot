@@ -6,15 +6,7 @@ from telethon import events
 from core import *
 
 
-@client.on(events.NewMessage(chats=[
-    -1002164115278,  # Finder
-    -1002408242605,  # Furious
-    -1002270373322,  # D Private
-    -1002361161091,  # Genesis
-    -1002508850717,  # favor
-    -1002519569203,  # favor chat
-    # -1002119837460,  # test channel
-]))
+@client.on(events.NewMessage(chats=list(FORWARD_RULES.keys())))
 async def handle_message_forwarding(event):
     if not isinstance(event, events.NewMessage.Event):
         return
@@ -28,16 +20,21 @@ async def handle_message_forwarding(event):
         elif event.reply_to.forum_topic:
             reply_to_top_id = event.reply_to.reply_to_msg_id
 
-    if chat_id in ALLOWED_TOPICS and reply_to_top_id not in ALLOWED_TOPICS.get(chat_id, []):
+    if type(FORWARD_RULES[chat_id]) is dict and reply_to_top_id not in FORWARD_RULES[chat_id].keys():
         return
 
-    forward_targets = FORWARD_RULES[chat_id] if chat_id not in ALLOWED_TOPICS else FORWARD_RULES[chat_id][
+    forward_targets = FORWARD_RULES[chat_id] if type(FORWARD_RULES[chat_id]) is list else FORWARD_RULES[chat_id][
         reply_to_top_id]
+
+    print("event: ", event)
+    print("forward_targets: ", forward_targets)
 
     try:
         for target_id in forward_targets:
             target_chat_id = TOPICS_CHAT_ID if target_id > 0 else target_id
             thread_id = target_id if target_id > 0 else None
+            print("target_chat_id: ", target_chat_id)
+            print("thread_id: ", thread_id)
 
             await send_message(target_chat_id, event, thread_id=thread_id)
     except Exception as e:
@@ -50,3 +47,4 @@ async def handle_message_forwarding(event):
             f.write('Traceback:\n')
             f.write(traceback.format_exc())
             f.write('\n' + '=' * 80 + '\n')
+    print()

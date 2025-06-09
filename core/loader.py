@@ -19,7 +19,7 @@ __all__ = (
 async def init_db() -> None:
     print("init DB")
     await Tortoise.init(
-        db_url='sqlite://db.sqlite3',
+        db_url='sqlite://data/db/db.sqlite3',
         modules={'models': ['models']}
     )
     await Tortoise.generate_schemas()

@@ -90,16 +90,31 @@ async def send_message(target_chat_id: int, event, thread_id: int = None):
                 await send_with_retry(bot.send_document, **send_kwargs, document=BufferedInputFile(file, filename=name),
                                       caption=text)
         else:
-            if (any(keyword in event.text for keyword in KEYWORDS_TO_SKIP) and thread_id not in THREAD_ID_BYPASS_SKIP
-                    or any(keyword in event.text for keyword in
-                           KEYWORDS_TO_SKIP_FUNDING) and target_chat_id == -1002570238300):
-                print(f"skip (Funding: {target_chat_id == -1002570238300})\n")
+            if any(keyword in event.text for keyword in KEYWORDS_TO_SKIP) and thread_id not in THREAD_ID_BYPASS_SKIP:
+                print("skip")
+                print("any(keyword in event.text for keyword in KEYWORDS_TO_SKIP): ",
+                      any(keyword in event.text for keyword in KEYWORDS_TO_SKIP))
+                print("thread_id not in THREAD_ID_BYPASS_SKIP: ", thread_id not in THREAD_ID_BYPASS_SKIP)
                 return
 
             send_kwargs["disable_web_page_preview"] = True
             send_kwargs["parse_mode"] = "Markdown"
 
             cleaned_text = remove_lines_by_keywords(text, KEYWORDS_TO_REMOVE)
+            if target_chat_id == -1002357512003 or thread_id in [50, 98, 34003]:
+                try:
+                    user = await client.get_entity(event.from_id.user_id)
+
+                    if user.username:
+                        name = f"@{user.username}"
+                    elif user.first_name or user.last_name:
+                        name = f"{user.first_name or ''} {user.last_name or ''}".strip()
+                    else:
+                        name = f"(ID) {event.from_id.user_id}"
+
+                    cleaned_text += f"\n\nBy {name}"
+                except Exception:
+                    cleaned_text += f"\n\nBy (ID) {event.from_id.user_id}"
             sent = await send_with_retry(bot.send_message, **send_kwargs, text=cleaned_text)
 
             messageMap = await MessageMap.create(
@@ -107,7 +122,7 @@ async def send_message(target_chat_id: int, event, thread_id: int = None):
                 sent_msg_id=sent.message_id,
                 is_thread=False if thread_id is None else True
             )
-            await OriginalMessage.create(text=event.text, message_map=messageMap)
+            await OriginalMessage.create(text=event.text, message_map=messageMap)  # TODO: заменить на f"\n\nBy {name}"
 
     except TelegramBadRequest as e:
         with open('errors.txt', 'a', encoding='utf-8') as f:

@@ -7,11 +7,7 @@ from core import *
 from models import MessageMap
 
 
-@client.on(events.MessageEdited(chats=[
-    -1002270373322,  # D Private
-    -1002508850717,  # favor
-    # -1002119837460,  # test channel
-]))
+@client.on(events.MessageEdited(chats=list(FORWARD_RULES.keys())))
 async def handle_message_edit(event):
     if not isinstance(event, events.MessageEdited.Event):
         return
@@ -26,14 +22,17 @@ async def handle_message_edit(event):
                 message_map_id = await MessageMap.get(
                     msg_id=event.id,
                     is_thread=True if target_id > 0 else False
-                )
+                ).prefetch_related('orig_msg')
             except DoesNotExist:
                 continue
 
-            print("EDIT")
-            print("target_chat_id: ", target_chat_id)
-            print("message_map_id.sent_msg_id: ", message_map_id.sent_msg_id)
-            print("event.text or "": ", event.text or "")
+            print("orig text: ", message_map_id.orig_msg.text)
+            print("new text: ", event.text)
+
+            if message_map_id.orig_msg.text == event.text:
+                print("skip edit")
+                return
+
             await bot.edit_message_text(
                 chat_id=target_chat_id,
                 message_id=message_map_id.sent_msg_id,
@@ -45,4 +44,5 @@ async def handle_message_edit(event):
 
     except Exception:
         print("EDIT ERROR:")
+        print("event: ", event)
         print(traceback.format_exc())
