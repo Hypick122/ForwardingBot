@@ -9,9 +9,12 @@ __all__ = (
 
 class MessageMap(Model):
     id = fields.IntField(pk=True)
-    msg_id = fields.IntField()
-    sent_msg_id = fields.IntField()
+    chat_id = fields.BigIntField()
+    msg_id = fields.BigIntField()
+    sent_msg_id = fields.BigIntField()
     is_thread = fields.BooleanField(default=False)
+    has_media = fields.BooleanField(default=False)
+    # media_group_ids = fields.JSONField(null=True)
 
     orig_msg: fields.ReverseRelation["OriginalMessage"]
 

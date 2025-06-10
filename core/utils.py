@@ -2,7 +2,8 @@ import traceback
 from datetime import datetime
 
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, BufferedInputFile
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, BufferedInputFile, InputMediaDocument, \
+    InputMediaVideo, InputMediaPhoto
 from telethon.errors import SessionPasswordNeededError
 from telethon.tl.types import ReplyInlineMarkup, KeyboardButtonUrl, DocumentAttributeFilename
 from telethon.utils import get_extension
@@ -57,11 +58,12 @@ async def send_message(target_chat_id: int, event, thread_id: int = None):
 
         if event.reply_to:
             try:
-                mapping = await MessageMap.get(
+                message_map_id = await MessageMap.get(
+                    chat_id=event.chat_id,
                     msg_id=event.reply_to.reply_to_msg_id,
                     is_thread=bool(thread_id)
                 )
-                send_kwargs["reply_to_message_id"] = mapping.sent_msg_id
+                send_kwargs["reply_to_message_id"] = message_map_id.sent_msg_id
             except DoesNotExist:
                 pass
 
@@ -69,32 +71,17 @@ async def send_message(target_chat_id: int, event, thread_id: int = None):
             send_kwargs["message_thread_id"] = thread_id
 
         if message.media:
-            file = await event.download_media(file=bytes)
-
-            if message.photo:
-                await send_with_retry(bot.send_photo, **send_kwargs,
-                                      photo=BufferedInputFile(file, filename="photo.jpg"), caption=text)
-            elif message.sticker:
-                name = get_filename_from_doc(event.media.document)
-                await bot.send_sticker(**send_kwargs, sticker=BufferedInputFile(file, filename=name))
-            # elif is_gif(doc): # TODO
-            elif message.video:
-                await send_with_retry(bot.send_video, **send_kwargs,
-                                      video=BufferedInputFile(file, filename="video.mp4"), caption=text)
-            elif message.voice:
-                await bot.send_voice(**send_kwargs, voice=BufferedInputFile(file, filename="voice.ogg"))  # caption=text
-            elif message.audio:
-                await bot.send_audio(**send_kwargs, audio=BufferedInputFile(file, filename="audio.mp3"))  # caption=text
-            elif message.document:
-                name = get_filename_from_doc(event.media.document)
-                await send_with_retry(bot.send_document, **send_kwargs, document=BufferedInputFile(file, filename=name),
-                                      caption=text)
+            media_group = await _get_media_posts_in_group(event.chat_id, message)
+            if len(media_group) > 1 and message.id == media_group[0].id:
+                await handle_media_message(event, media_group, send_kwargs, thread_id)
+            elif len(media_group) <= 1:
+                await handle_media_message(event, [message], send_kwargs, thread_id)
         else:
             if any(keyword in event.text for keyword in KEYWORDS_TO_SKIP) and thread_id not in THREAD_ID_BYPASS_SKIP:
-                print("skip")
-                print("any(keyword in event.text for keyword in KEYWORDS_TO_SKIP): ",
-                      any(keyword in event.text for keyword in KEYWORDS_TO_SKIP))
-                print("thread_id not in THREAD_ID_BYPASS_SKIP: ", thread_id not in THREAD_ID_BYPASS_SKIP)
+                # print("skip")
+                # print("any(keyword in event.text for keyword in KEYWORDS_TO_SKIP): ",
+                #       any(keyword in event.text for keyword in KEYWORDS_TO_SKIP))
+                # print("thread_id not in THREAD_ID_BYPASS_SKIP: ", thread_id not in THREAD_ID_BYPASS_SKIP)
                 return
 
             send_kwargs["disable_web_page_preview"] = True
@@ -118,13 +105,15 @@ async def send_message(target_chat_id: int, event, thread_id: int = None):
             sent = await send_with_retry(bot.send_message, **send_kwargs, text=cleaned_text)
 
             messageMap = await MessageMap.create(
+                chat_id=event.chat_id,
                 msg_id=event.id,
                 sent_msg_id=sent.message_id,
-                is_thread=False if thread_id is None else True
+                is_thread=bool(thread_id)
             )
             await OriginalMessage.create(text=event.text, message_map=messageMap)  # TODO: заменить на f"\n\nBy {name}"
 
-    except TelegramBadRequest as e:
+    except Exception as e:
+        print(traceback.format_exc())
         with open('errors.txt', 'a', encoding='utf-8') as f:
             now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
@@ -153,27 +142,6 @@ def convert_telethon_markup_to_aiogram(markup: ReplyInlineMarkup) -> InlineKeybo
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
-# def create_markup(cleaned_text: str) -> InlineKeyboardMarkup:
-#     contract_match = re.search(r"Контракт:\s*([A-Za-z0-9]{32,})", cleaned_text)
-#     contract = contract_match.group(1) if contract_match else None
-#
-#     ticker_match = re.search(r"Монета:\s*([A-Z0-9]{2,})", cleaned_text)
-#     ticker = ticker_match.group(1) if ticker_match else None
-#
-#     extra_buttons = []
-#     if contract:
-#         extra_buttons.append(InlineKeyboardButton(text="GMGN", url=f"https://gmgn.ai/sol/token/{contract}"))
-#     if ticker:
-#         extra_buttons.append(InlineKeyboardButton(text="MEXC", url=f"https://futures.mexc.com/exchange/{ticker}_USDT"))
-#
-#     # if markup:
-#     #     markup.inline_keyboard.append(extra_buttons)
-#     # if extra_buttons:
-#     #     markup = InlineKeyboardMarkup(inline_keyboard=[extra_buttons])
-#
-#     return InlineKeyboardMarkup(inline_keyboard=[extra_buttons])
-
-
 def get_filename_from_doc(doc):
     return next(
         (a.file_name for a in doc.attributes if isinstance(a, DocumentAttributeFilename)),
@@ -181,38 +149,11 @@ def get_filename_from_doc(doc):
     )
 
 
-# def get_file_input(event_media, filename="file.bin"):
-#     return BufferedInputFile(file=event_media, filename=filename)
-#
-#
-# def is_gif(doc):
-#     return any(isinstance(attr, DocumentAttributeAnimated) for attr in doc.attributes)
-#
-#
-# def is_sticker(doc):
-#     return any(isinstance(attr, DocumentAttributeSticker) for attr in doc.attributes)
-
-
 def remove_lines_by_keywords(text: str, keywords: list) -> str:
     lines = text.strip().splitlines()
     filtered_lines = [line for line in lines if not any(keyword in line for keyword in keywords)]
     return "\n".join(filtered_lines)
 
-
-# def safe_caption(caption: str) -> str:
-#     lines = caption.splitlines()
-#     safe_lines = []
-#
-#     for line in lines:
-#         if re.match(r'https?://', line.strip()):
-#             safe_lines.append(line)
-#         else:
-#             line = line.replace('\\', '\\\\')
-#             line = re.sub(r'(?<!\\)([*`_])(?=\S)(.*?)(?<=\S)\1', r'\1\2\1', line)
-#             line = re.sub(r'(?<!\\)([~|{}.!])', r'\\\1', line)
-#             safe_lines.append(line)
-#
-#     return "\n".join(safe_lines)
 
 async def send_with_retry(send_func, *args, **kwargs):
     try:
@@ -246,3 +187,84 @@ async def send_with_retry(send_func, *args, **kwargs):
             return results[-1]
 
         return await send_func(*args, **kwargs)
+
+
+async def _get_media_posts_in_group(chat, original_post, max_amp=10):
+    if original_post.grouped_id is None:
+        return [original_post] if original_post.media is not None else []
+
+    search_ids = [i for i in range(original_post.id - max_amp, original_post.id + max_amp + 1)]
+    posts = await client.get_messages(chat, ids=search_ids)
+    media = []
+    for post in posts:
+        if post is not None and post.grouped_id == original_post.grouped_id and post.media is not None:
+            media.append(post)
+    return media
+
+
+async def handle_media_message(event, media_group, send_kwargs, thread_id):
+    message = event.message
+    text = message.text or ""
+
+    if len(media_group) > 1:
+        media_to_send = []
+        for msg in media_group:
+            file = await client.download_media(msg, file=bytes)
+
+            if msg.photo:
+                media_to_send.append(
+                    InputMediaPhoto(
+                        media=BufferedInputFile(file, filename="photo.jpg"),
+                        caption=text if msg.id == message.id else None
+                    )
+                )
+            elif msg.video:
+                media_to_send.append(
+                    InputMediaVideo(
+                        media=BufferedInputFile(file, filename="video.mp4"),
+                        caption=text if msg.id == message.id else None
+                    )
+                )
+            elif msg.document:
+                name = get_filename_from_doc(msg.media.document)
+                media_to_send.append(
+                    InputMediaDocument(
+                        media=BufferedInputFile(file, filename=name),
+                        caption=text if msg.id == message.id else None
+                    )
+                )
+
+        if media_to_send:
+            send_kwargs.pop("reply_markup")
+            sent = (await bot.send_media_group(**send_kwargs, media=media_to_send))[0]
+
+    else:
+        file = await event.download_media(file=bytes)
+
+        if message.photo:
+            sent = await send_with_retry(bot.send_photo, **send_kwargs,
+                                         photo=BufferedInputFile(file, filename="photo.jpg"), caption=text)
+        elif message.sticker:
+            name = get_filename_from_doc(event.media.document)
+            sent = await bot.send_sticker(**send_kwargs, sticker=BufferedInputFile(file, filename=name))
+        elif message.video:
+            sent = await send_with_retry(bot.send_video, **send_kwargs,
+                                         video=BufferedInputFile(file, filename="video.mp4"), caption=text)
+        elif message.voice:
+            sent = await bot.send_voice(**send_kwargs, voice=BufferedInputFile(file, filename="voice.ogg"))
+        elif message.audio:
+            sent = await bot.send_audio(**send_kwargs, audio=BufferedInputFile(file, filename="audio.mp3"))
+        elif message.document:
+            name = get_filename_from_doc(event.media.document)
+            sent = await send_with_retry(bot.send_document, **send_kwargs,
+                                         document=BufferedInputFile(file, filename=name), caption=text)
+
+    messageMap = await MessageMap.create(
+        chat_id=event.chat_id,
+        msg_id=event.id,
+        sent_msg_id=sent.message_id,
+        is_thread=bool(thread_id),
+        has_media=True
+        # media_group_ids=[msg.message_id for msg in sent]
+    )
+    await OriginalMessage.create(text=event.text, message_map=messageMap)

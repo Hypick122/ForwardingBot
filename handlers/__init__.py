@@ -9,5 +9,5 @@ __all__ = (
 handlers = [
     handle_message_delete,
     handle_message_edit,
-    handle_message_forwarding,
+    handle_message_forwarding
 ]

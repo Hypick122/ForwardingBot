@@ -21,11 +21,15 @@ async def handle_message_forwarding(event):
             reply_to_top_id = event.reply_to.reply_to_msg_id
 
     if type(FORWARD_RULES[chat_id]) is dict and reply_to_top_id not in FORWARD_RULES[chat_id].keys():
+        # print("skip\n")
         return
 
     forward_targets = FORWARD_RULES[chat_id] if type(FORWARD_RULES[chat_id]) is list else FORWARD_RULES[chat_id][
         reply_to_top_id]
 
+    print("\nforwarding")
+    print("chat_id: ", chat_id)
+    print("reply_to_top_id: ", reply_to_top_id)
     print("event: ", event)
     print("forward_targets: ", forward_targets)
 
@@ -33,11 +37,10 @@ async def handle_message_forwarding(event):
         for target_id in forward_targets:
             target_chat_id = TOPICS_CHAT_ID if target_id > 0 else target_id
             thread_id = target_id if target_id > 0 else None
-            print("target_chat_id: ", target_chat_id)
-            print("thread_id: ", thread_id)
 
             await send_message(target_chat_id, event, thread_id=thread_id)
     except Exception as e:
+        print(traceback.format_exc())
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         with open('errors.txt', 'a', encoding='utf-8') as f:
             f.write(f'[{now}] Ошибка хендлера:\n')
@@ -47,4 +50,3 @@ async def handle_message_forwarding(event):
             f.write('Traceback:\n')
             f.write(traceback.format_exc())
             f.write('\n' + '=' * 80 + '\n')
-    print()
