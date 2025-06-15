@@ -67,6 +67,10 @@ async def send_message(target_chat_id: int, event, thread_id: int = None):
             except DoesNotExist:
                 pass
 
+        if any(keyword in event.text for keyword in
+               KEYWORDS_TO_SKIP) and thread_id not in THREAD_ID_BYPASS_SKIP and event.chat_id not in CHANNEL_ID_BYPASS_SKIP:
+            return
+
         if thread_id:
             send_kwargs["message_thread_id"] = thread_id
 
@@ -77,18 +81,11 @@ async def send_message(target_chat_id: int, event, thread_id: int = None):
             elif len(media_group) <= 1:
                 await handle_media_message(event, [message], send_kwargs, thread_id)
         else:
-            if any(keyword in event.text for keyword in KEYWORDS_TO_SKIP) and thread_id not in THREAD_ID_BYPASS_SKIP:
-                # print("skip")
-                # print("any(keyword in event.text for keyword in KEYWORDS_TO_SKIP): ",
-                #       any(keyword in event.text for keyword in KEYWORDS_TO_SKIP))
-                # print("thread_id not in THREAD_ID_BYPASS_SKIP: ", thread_id not in THREAD_ID_BYPASS_SKIP)
-                return
-
             send_kwargs["disable_web_page_preview"] = True
             send_kwargs["parse_mode"] = "Markdown"
 
             cleaned_text = remove_lines_by_keywords(text, KEYWORDS_TO_REMOVE)
-            if target_chat_id == -1002357512003 or thread_id in [50, 98, 34003]:
+            if target_chat_id in [-1002357512003, -1002602282145] or thread_id in [50, 98, 34003, 2672]:
                 try:
                     user = await client.get_entity(event.from_id.user_id)
 
@@ -101,7 +98,7 @@ async def send_message(target_chat_id: int, event, thread_id: int = None):
 
                     cleaned_text += f"\n\nBy {name}"
                 except Exception:
-                    cleaned_text += f"\n\nBy (ID) {event.from_id.user_id}"
+                    cleaned_text += f"\n\nBy group"
             sent = await send_with_retry(bot.send_message, **send_kwargs, text=cleaned_text)
 
             messageMap = await MessageMap.create(

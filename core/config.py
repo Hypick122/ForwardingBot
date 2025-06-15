@@ -10,6 +10,7 @@ __all__ = (
     'FORWARD_RULES',
     'KEYWORDS_TO_REMOVE',
     'KEYWORDS_TO_SKIP',
+    'CHANNEL_ID_BYPASS_SKIP',
     'THREAD_ID_BYPASS_SKIP',
 )
 
@@ -114,7 +115,33 @@ KEYWORDS_TO_SKIP = [
     "LifeChange Pump",
     "Potential Pump",
     "Открыть на OurBit Futures",
+    "USELESS",  # СНГ ban
+    "Dz9mQ9NzkBcCsuGPFJ3r1bS4wgqKMHBPiVuniW8Mbonk",
+    "JAGER",  # СНГ ban
+    "0x74836cC0E821A6bE18e407E6388E430B689C66e9",
+    "RATO",  # СНГ ban
+    "0xf816507E690f5Aa4E29d164885EB5fa7a5627860",
+    "TIBBIR",  # СНГ ban
+    "0xA4A2E2ca3fBfE21aed83471D28b6f65A233C6e00",
+    "GOONC",  # СНГ ban
+    "ENfpbQUM5xAnNP8ecyEQGFJ6KwbuPjMwv7ZjR29cDuAb",
+    "BUZZ",  # СНГ ban
+    "9DHe3pycTuymFk4H4bbPoAJ4hQrr2kaLDF6J6aAKpump",
+    "DOGINME",  # СНГ ban
+    "0x6921B130D297cc43754afba22e5EAc0FBf8Db75b",
+    "KEKIUS",  # СНГ ban
+    "0x26E550AC11B26f78A04489d5F20f24E3559f7Dd9",
+    "MOONPIG",  # СНГ ban
+    "Ai3eKAWjzKMV8wRwd41nVP83yqfbAVJykhvJVPxspump",
+    "SPEC",  # spam
+    "0xadf7c35560035944e805d98ff17d58cde2449389",
+    "KNC",  # spam
+    "0xdeFA4e8a7bcBA345F687a2f1456F5Edd9CE97202",
+    "POPE",  # delist
+    "9u8PP725K2GUf4p5bhKebrzHTGgvHp6KDeQPf7jc1F1W"
 ]
-THREAD_ID_BYPASS_SKIP = [2671, 55, 50, 98]
+CHANNEL_ID_BYPASS_SKIP = [-1002270373322, -1002628565313, -1002508850717, -1002519569203, -1002506549679]
+THREAD_ID_BYPASS_SKIP = [2671, 55, 50, 98, 3830, 679, 45795, 13144, 72301, 5914, 72350, 597, 596, 35311, 56053, 13781,
+                         45155]
 
 config = Settings()

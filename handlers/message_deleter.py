@@ -19,10 +19,6 @@ async def handle_message_delete(event):
         return
 
     try:
-        print("delete")
-        print("event: ", event)
-        print("FORWARD_RULES[event.chat_id]: ", FORWARD_RULES[event.chat_id])
-
         for target_id in FORWARD_RULES[event.chat_id]:
             target_chat_id = TOPICS_CHAT_ID if target_id > 0 else target_id
 
@@ -52,5 +48,7 @@ async def handle_message_delete(event):
                     )
 
     except Exception:
-        print("DELETE ERROR:")
+        print("\nDELETE ERROR:")
+        print("event: ", event)
+        print("FORWARD_RULES[event.chat_id]: ", FORWARD_RULES[event.chat_id])
         print(traceback.format_exc())

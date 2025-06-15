@@ -31,12 +31,6 @@ async def handle_message_edit(event):
     forward_targets = FORWARD_RULES[chat_id] if type(FORWARD_RULES[chat_id]) is list else FORWARD_RULES[chat_id][
         reply_to_top_id]
 
-    print("\nedit")
-    print("chat_id: ", chat_id)
-    print("reply_to_top_id: ", reply_to_top_id)
-    print("event: ", event)
-    print("forward_targets: ", forward_targets)
-
     try:
         for target_id in forward_targets:
             target_chat_id = TOPICS_CHAT_ID if target_id > 0 else target_id
@@ -68,5 +62,9 @@ async def handle_message_edit(event):
                     disable_web_page_preview=True
                 )
     except Exception:
-        print("EDIT ERROR:")
+        print("\nEDIT ERROR:")
+        print("chat_id: ", chat_id)
+        print("reply_to_top_id: ", reply_to_top_id)
+        print("event: ", event)
+        print("forward_targets: ", forward_targets)
         print(traceback.format_exc())
