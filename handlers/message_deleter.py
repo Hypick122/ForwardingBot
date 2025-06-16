@@ -8,12 +8,6 @@ from models import MessageMap
 
 
 @client.on(events.MessageDeleted(chats=list(FORWARD_RULES.keys())))
-# @client.on(events.MessageDeleted(chats=[
-#     -1002270373322,  # D Private
-#     -1002508850717,  # favor
-#     -1002506549679,  # Приватка REKT BOYS
-#     # -1002119837460,  # test channel
-# ]))
 async def handle_message_delete(event):
     if not isinstance(event, events.MessageDeleted.Event):
         return

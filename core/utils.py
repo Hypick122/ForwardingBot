@@ -68,7 +68,7 @@ async def send_message(target_chat_id: int, event, thread_id: int = None):
                 pass
 
         if any(keyword in event.text for keyword in
-               KEYWORDS_TO_SKIP) and thread_id not in THREAD_ID_BYPASS_SKIP and event.chat_id not in CHANNEL_ID_BYPASS_SKIP:
+               await get_keywords_to_skip()) and thread_id not in await get_thread_bypass_skip() and event.chat_id not in await get_channel_bypass_skip():
             return
 
         if thread_id:
@@ -84,7 +84,7 @@ async def send_message(target_chat_id: int, event, thread_id: int = None):
             send_kwargs["disable_web_page_preview"] = True
             send_kwargs["parse_mode"] = "Markdown"
 
-            cleaned_text = remove_lines_by_keywords(text, KEYWORDS_TO_REMOVE)
+            cleaned_text = remove_lines_by_keywords(text, await get_keywords_to_remove())
             if target_chat_id in [-1002357512003, -1002602282145] or thread_id in [50, 98, 34003, 2672]:
                 try:
                     user = await client.get_entity(event.from_id.user_id)

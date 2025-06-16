@@ -4,6 +4,10 @@ from tortoise.models import Model
 __all__ = (
     'MessageMap',
     'OriginalMessage',
+    'KeywordToRemove',
+    'KeywordToSkip',
+    'ChannelBypassSkip',
+    'ThreadBypassSkip'
 )
 
 
@@ -21,6 +25,7 @@ class MessageMap(Model):
     class Meta:
         table = 'messageMap'
 
+
 class OriginalMessage(Model):
     id = fields.IntField(pk=True)
     text = fields.TextField()
@@ -31,3 +36,35 @@ class OriginalMessage(Model):
 
     class Meta:
         table = 'originalMessage'
+
+
+class KeywordToRemove(Model):
+    id = fields.IntField(pk=True)
+    keyword = fields.CharField(max_length=255, unique=True)
+
+    class Meta:
+        table = 'keywords_to_remove'
+
+
+class KeywordToSkip(Model):
+    id = fields.IntField(pk=True)
+    keyword = fields.CharField(max_length=255, unique=True)
+
+    class Meta:
+        table = 'keywords_to_skip'
+
+
+class ChannelBypassSkip(Model):
+    id = fields.IntField(pk=True)
+    channel_id = fields.BigIntField(unique=True)
+
+    class Meta:
+        table = 'channel_bypass_skip'
+
+
+class ThreadBypassSkip(Model):
+    id = fields.IntField(pk=True)
+    thread_id = fields.BigIntField(unique=True)
+
+    class Meta:
+        table = 'thread_bypass_skip'

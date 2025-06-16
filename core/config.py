@@ -4,14 +4,16 @@ from dotenv import load_dotenv
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from models import *
+
 __all__ = (
     'config',
     'TOPICS_CHAT_ID',
     'FORWARD_RULES',
-    'KEYWORDS_TO_REMOVE',
-    'KEYWORDS_TO_SKIP',
-    'CHANNEL_ID_BYPASS_SKIP',
-    'THREAD_ID_BYPASS_SKIP',
+    'get_keywords_to_remove',
+    'get_keywords_to_skip',
+    'get_channel_bypass_skip',
+    'get_thread_bypass_skip'
 )
 
 load_dotenv()
@@ -99,49 +101,25 @@ FORWARD_RULES: Dict[int, Union[
     }
 }
 
-KEYWORDS_TO_REMOVE = [
-    "https://t.me/send?start=SBdLEPQwnj-BkwNzEy",
-    "Main Channel",
-    "genesis-arbitrage.gitbook.io",
-    "Twitter",
-    "https://t.me/+lR4kw7umxL82MDQy",
-    "0xB81319806E8B00b893a5BD420Ef299D15DE86BCA",
-    "Created by __SkyNet__",
-    " All spreads, graphs"
-]
-KEYWORDS_TO_SKIP = [
-    "ONON",
-    "Сигнал в ",
-    "LifeChange Pump",
-    "Potential Pump",
-    "Открыть на OurBit Futures",
-    "USELESS",  # СНГ ban
-    "Dz9mQ9NzkBcCsuGPFJ3r1bS4wgqKMHBPiVuniW8Mbonk",
-    "JAGER",  # СНГ ban
-    "0x74836cC0E821A6bE18e407E6388E430B689C66e9",
-    "RATO",  # СНГ ban
-    "0xf816507E690f5Aa4E29d164885EB5fa7a5627860",
-    "TIBBIR",  # СНГ ban
-    "0xA4A2E2ca3fBfE21aed83471D28b6f65A233C6e00",
-    "GOONC",  # СНГ ban
-    "ENfpbQUM5xAnNP8ecyEQGFJ6KwbuPjMwv7ZjR29cDuAb",
-    "BUZZ",  # СНГ ban
-    "9DHe3pycTuymFk4H4bbPoAJ4hQrr2kaLDF6J6aAKpump",
-    "DOGINME",  # СНГ ban
-    "0x6921B130D297cc43754afba22e5EAc0FBf8Db75b",
-    "KEKIUS",  # СНГ ban
-    "0x26E550AC11B26f78A04489d5F20f24E3559f7Dd9",
-    "MOONPIG",  # СНГ ban
-    "Ai3eKAWjzKMV8wRwd41nVP83yqfbAVJykhvJVPxspump",
-    "SPEC",  # spam
-    "0xadf7c35560035944e805d98ff17d58cde2449389",
-    "KNC",  # spam
-    "0xdeFA4e8a7bcBA345F687a2f1456F5Edd9CE97202",
-    "POPE",  # delist
-    "9u8PP725K2GUf4p5bhKebrzHTGgvHp6KDeQPf7jc1F1W"
-]
-CHANNEL_ID_BYPASS_SKIP = [-1002270373322, -1002628565313, -1002508850717, -1002519569203, -1002506549679]
-THREAD_ID_BYPASS_SKIP = [2671, 55, 50, 98, 3830, 679, 45795, 13144, 72301, 5914, 72350, 597, 596, 35311, 56053, 13781,
-                         45155]
+
+async def get_keywords_to_remove():
+    keywords = await KeywordToRemove.all().values_list('keyword', flat=True)
+    return list(keywords)
+
+
+async def get_keywords_to_skip():
+    keywords = await KeywordToSkip.all().values_list('keyword', flat=True)
+    return list(keywords)
+
+
+async def get_channel_bypass_skip():
+    channels = await ChannelBypassSkip.all().values_list('channel_id', flat=True)
+    return list(channels)
+
+
+async def get_thread_bypass_skip():
+    threads = await ThreadBypassSkip.all().values_list('thread_id', flat=True)
+    return list(threads)
+
 
 config = Settings()

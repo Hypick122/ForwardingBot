@@ -17,3 +17,4 @@ python3 __main__.py
 # chmod +x run.sh
 # nohup ./run.sh &
 # nohup python3 __main__.py &
+# pkill -f "__main__.py"

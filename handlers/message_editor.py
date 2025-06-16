@@ -34,6 +34,7 @@ async def handle_message_edit(event):
     try:
         for target_id in forward_targets:
             target_chat_id = TOPICS_CHAT_ID if target_id > 0 else target_id
+            thread_id = target_id if target_id > 0 else None
 
             try:
                 message_map_id = await MessageMap.get(
@@ -44,7 +45,21 @@ async def handle_message_edit(event):
             except DoesNotExist:
                 continue
 
-            cleaned_text = remove_lines_by_keywords(event.text, KEYWORDS_TO_REMOVE)
+            cleaned_text = remove_lines_by_keywords(event.text, await get_keywords_to_remove())
+            if target_chat_id in [-1002357512003, -1002602282145] or thread_id in [50, 98, 34003, 2672]:
+                try:
+                    user = await client.get_entity(event.from_id.user_id)
+
+                    if user.username:
+                        name = f"@{user.username}"
+                    elif user.first_name or user.last_name:
+                        name = f"{user.first_name or ''} {user.last_name or ''}".strip()
+                    else:
+                        name = f"(ID) {event.from_id.user_id}"
+
+                    cleaned_text += f"\n\nBy {name}"
+                except Exception:
+                    cleaned_text += f"\n\nBy group"
 
             if message_map_id.has_media:
                 await bot.edit_message_caption(
