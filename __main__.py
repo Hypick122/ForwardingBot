@@ -49,7 +49,6 @@ async def on_shutdown() -> None:
 
 async def main() -> None:
     await init_db()
-    await init_config()
 
     await asyncio.gather(
         run_telethon_client(),

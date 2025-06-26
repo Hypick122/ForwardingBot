@@ -7,7 +7,6 @@ from aiogram.types import Message
 from core import get_keywords_to_remove, get_keywords_to_skip, get_channel_bypass_skip, get_thread_bypass_skip
 from models import *
 
-
 router = Router()
 
 
@@ -29,6 +28,7 @@ async def show_test_help(message: Message):
 
     await message.answer(help_text, parse_mode="HTML")
 
+
 async def show_config(message: Message):
     config_text = "KEYWORDS_TO_REMOVE:\n"
     for item in await get_keywords_to_remove():
@@ -44,7 +44,7 @@ async def show_config(message: Message):
 
 @router.message(Command("config"))
 @router.message(F.text.lower().split()[0] == 'config')
-async def config_category_callback(message: types.Message, state: FSMContext) -> None:
+async def config_category_cmd(message: types.Message, state: FSMContext) -> None:
     parts = message.text.split()
 
     if len(parts) < 2:
@@ -54,18 +54,18 @@ async def config_category_callback(message: types.Message, state: FSMContext) ->
     action = parts[1].lower()
 
     if action == 'remove':
-        await message.answer("Введите ключевое слово для добавления/удаления в KEYWORDS_TO_REMOVE:")
+        await message.answer("Введите ключевое слово для добавления/удаления в KEYWORDS_TO_REMOVE:", parse_mode=None)
         await state.set_state(ConfigStates.waiting_for_keyword)
         await state.update_data(category='remove')
     elif action == 'skip':
-        await message.answer("Введите ключевое слово для добавления/удаления в KEYWORDS_TO_SKIP:")
+        await message.answer("Введите ключевое слово для добавления/удаления в KEYWORDS_TO_SKIP:", parse_mode=None)
         await state.set_state(ConfigStates.waiting_for_keyword)
         await state.update_data(category='skip')
     elif action == 'channel':
-        await message.answer("Введите ID канала для добавления/удаления в CHANNEL_ID_BYPASS_SKIP:")
+        await message.answer("Введите ID канала для добавления/удаления в CHANNEL_ID_BYPASS_SKIP:", parse_mode=None)
         await state.set_state(ConfigStates.waiting_for_channel_id)
     elif action == 'thread':
-        await message.answer("Введите ID треда для добавления/удаления в THREAD_ID_BYPASS_SKIP:")
+        await message.answer("Введите ID треда для добавления/удаления в THREAD_ID_BYPASS_SKIP:", parse_mode=None)
         await state.set_state(ConfigStates.waiting_for_thread_id)
     elif action == 'show':
         await show_config(message)
@@ -82,18 +82,18 @@ async def process_keyword(message: Message, state: FSMContext):
             exists = await KeywordToRemove.filter(keyword=keyword).first()
             if exists:
                 await exists.delete()
-                await message.answer(f"❌ Ключевое слово '{keyword}' удалено из KEYWORDS_TO_REMOVE")
+                await message.answer(f"❌ Ключевое слово {keyword} удалено из KEYWORDS_TO_REMOVE")
             else:
                 await KeywordToRemove.create(keyword=keyword)
-                await message.answer(f"✅ Ключевое слово '{keyword}' добавлено в KEYWORDS_TO_REMOVE")
+                await message.answer(f"✅ Ключевое слово {keyword} добавлено в KEYWORDS_TO_REMOVE")
         elif category == 'skip':
             exists = await KeywordToSkip.filter(keyword=keyword).first()
             if exists:
                 await exists.delete()
-                await message.answer(f"❌ Ключевое слово '{keyword}' удалено из KEYWORDS_TO_SKIP")
+                await message.answer(f"❌ Ключевое слово {keyword} удалено из KEYWORDS_TO_SKIP")
             else:
                 await KeywordToSkip.create(keyword=keyword)
-                await message.answer(f"✅ Ключевое слово '{keyword}' добавлено в KEYWORDS_TO_SKIP")
+                await message.answer(f"✅ Ключевое слово {keyword} добавлено в KEYWORDS_TO_SKIP")
     finally:
         await state.clear()
 
@@ -106,13 +106,13 @@ async def process_channel_id(message: Message, state: FSMContext):
 
         if exists:
             await exists.delete()
-            await message.answer(f"❌ Канал с ID {channel_id} удален из CHANNEL_ID_BYPASS_SKIP")
+            await message.answer(f"❌ Канал {channel_id} удален из CHANNEL_ID_BYPASS_SKIP")
         else:
             await ChannelBypassSkip.create(channel_id=channel_id)
-            await message.answer(f"✅ Канал с ID {channel_id} добавлен в CHANNEL_ID_BYPASS_SKIP")
+            await message.answer(f"✅ Канал {channel_id} добавлен в CHANNEL_ID_BYPASS_SKIP")
     except ValueError:
         await message.answer("⚠ ID канала должен быть числом")
-    except Exception as e:
+    except Exception:
         await message.answer("⚠ Ошибка при обработке ID канала")
     finally:
         await state.clear()
@@ -126,14 +126,19 @@ async def process_thread_id(message: Message, state: FSMContext):
 
         if exists:
             await exists.delete()
-            await message.answer(f"❌ Топик с ID {thread_id} удален из THREAD_ID_BYPASS_SKIP")
+            await message.answer(f"❌ Топик {thread_id} удален из THREAD_ID_BYPASS_SKIP")
         else:
             await ThreadBypassSkip.create(thread_id=thread_id)
-            await message.answer(f"✅ Топик с ID {thread_id} добавлен в THREAD_ID_BYPASS_SKIP")
+            await message.answer(f"✅ Топик {thread_id} добавлен в THREAD_ID_BYPASS_SKIP")
     except ValueError:
         await message.answer("⚠ ID топика должен быть числом")
-    except Exception as e:
+    except Exception:
         # logger.error(f"Error processing thread ID: {e}")
         await message.answer("⚠ Ошибка при обработке ID топика")
     finally:
         await state.clear()
+
+
+@router.message(Command("exit"))
+async def exit_cmd() -> None:
+    exit("Завершения работы бота")

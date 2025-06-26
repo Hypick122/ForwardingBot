@@ -7,7 +7,8 @@ __all__ = (
     'KeywordToRemove',
     'KeywordToSkip',
     'ChannelBypassSkip',
-    'ThreadBypassSkip'
+    'ThreadBypassSkip',
+    'ForwardRule'
 )
 
 
@@ -68,3 +69,15 @@ class ThreadBypassSkip(Model):
 
     class Meta:
         table = 'thread_bypass_skip'
+
+
+class ForwardRule(Model):
+    id = fields.IntField(pk=True)
+    source_channel = fields.BigIntField()
+    thread_id = fields.BigIntField(null=True)
+    dest_channel = fields.BigIntField()
+    dest_thread = fields.BigIntField(null=True)
+
+    class Meta:
+        table = 'forward_rules'
+        unique_together = (('source_channel', 'thread_id'),)

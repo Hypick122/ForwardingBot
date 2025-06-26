@@ -10,7 +10,7 @@ from telethon.utils import get_extension
 from tortoise.exceptions import DoesNotExist
 
 from core.config import *
-from core.loader import *
+from models import *
 
 __all__ = (
     'connect_to_session',
@@ -18,9 +18,13 @@ __all__ = (
     'convert_telethon_markup_to_aiogram',
     'get_filename_from_doc',
     'remove_lines_by_keywords',
+    'get_monitored_channels',
+    'get_forward_targets',
+    'get_keywords_to_remove',
+    'get_keywords_to_skip',
+    'get_channel_bypass_skip',
+    'get_thread_bypass_skip'
 )
-
-from models import MessageMap, OriginalMessage
 
 
 async def connect_to_session() -> None:
@@ -82,7 +86,7 @@ async def send_message(target_chat_id: int, event, thread_id: int = None):
                 await handle_media_message(event, [message], send_kwargs, thread_id)
         else:
             send_kwargs["disable_web_page_preview"] = True
-            send_kwargs["parse_mode"] = "Markdown"
+            # send_kwargs["parse_mode"] = "Markdown"
 
             cleaned_text = remove_lines_by_keywords(text, await get_keywords_to_remove())
             if target_chat_id in [-1002357512003, -1002602282145] or thread_id in [50, 98, 34003, 2672]:
@@ -108,6 +112,8 @@ async def send_message(target_chat_id: int, event, thread_id: int = None):
                 is_thread=bool(thread_id)
             )
             await OriginalMessage.create(text=event.text, message_map=messageMap)  # TODO: заменить на f"\n\nBy {name}"
+
+        print("Сообщение отправлено!\n")
 
     except Exception as e:
         print(traceback.format_exc())
@@ -156,33 +162,7 @@ async def send_with_retry(send_func, *args, **kwargs):
     try:
         return await send_func(*args, **kwargs)
     except TelegramBadRequest:
-        kwargs["parse_mode"] = 'HTML'
-        text = kwargs.get("caption") or kwargs.get("text")
-
-        if text and len(text) > 4095:
-            results = []
-
-            for i in range(0, len(text), 4095):
-                chunk = text[i:i + 4095]
-
-                send_kwargs = dict(kwargs)
-
-                if i > 0:
-                    send_kwargs.pop("photo", None)
-                    send_kwargs.pop("document", None)
-                    send_kwargs.pop("video", None)
-
-                if "caption" in send_kwargs:
-                    send_kwargs["caption"] = chunk
-                else:
-                    send_kwargs["text"] = chunk
-
-                result = await send_func(*args, **send_kwargs)
-                results.append(result)
-
-            # return results if len(results) > 1 else results[0]
-            return results[-1]
-
+        kwargs["parse_mode"] = None
         return await send_func(*args, **kwargs)
 
 
@@ -255,13 +235,59 @@ async def handle_media_message(event, media_group, send_kwargs, thread_id):
             name = get_filename_from_doc(event.media.document)
             sent = await send_with_retry(bot.send_document, **send_kwargs,
                                          document=BufferedInputFile(file, filename=name), caption=text)
+        else:
+            sent = await send_with_retry(bot.send_message, **send_kwargs, text=text)
 
-    messageMap = await MessageMap.create(
-        chat_id=event.chat_id,
-        msg_id=event.id,
-        sent_msg_id=sent.message_id,
-        is_thread=bool(thread_id),
-        has_media=True
-        # media_group_ids=[msg.message_id for msg in sent]
-    )
-    await OriginalMessage.create(text=event.text, message_map=messageMap)
+    try:
+        messageMap = await MessageMap.create(
+            chat_id=event.chat_id,
+            msg_id=event.id,
+            sent_msg_id=sent.message_id,
+            is_thread=bool(thread_id),
+            has_media=True
+            # media_group_ids=[msg.message_id for msg in sent]
+        )
+        await OriginalMessage.create(text=event.text, message_map=messageMap)
+
+        print("Сообщение с картинкой отправлено!\n")
+    except Exception as e:
+        print("image", e)
+        print("event: ", event)
+
+
+async def get_monitored_channels():
+    return await ForwardRule.all().distinct().values_list('source_channel', flat=True)
+
+
+async def get_forward_targets(source_channel, thread_id=None):
+    channel_rules = await ForwardRule.filter(
+        source_channel=source_channel,
+        thread_id=thread_id
+    ).first()
+
+    if channel_rules is None:
+        return None
+
+    if channel_rules.dest_thread is None:
+        return [channel_rules.dest_channel]
+    return [channel_rules.dest_channel, channel_rules.dest_thread]
+
+
+async def get_keywords_to_remove():
+    keywords = await KeywordToRemove.all().values_list('keyword', flat=True)
+    return list(keywords)
+
+
+async def get_keywords_to_skip():
+    keywords = await KeywordToSkip.all().values_list('keyword', flat=True)
+    return list(keywords)
+
+
+async def get_channel_bypass_skip():
+    channels = await ChannelBypassSkip.all().values_list('channel_id', flat=True)
+    return list(channels)
+
+
+async def get_thread_bypass_skip():
+    threads = await ThreadBypassSkip.all().values_list('thread_id', flat=True)
+    return list(threads)
