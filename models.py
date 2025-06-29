@@ -6,8 +6,6 @@ __all__ = (
     'OriginalMessage',
     'KeywordToRemove',
     'KeywordToSkip',
-    'ChannelBypassSkip',
-    'ThreadBypassSkip',
     'ForwardRule'
 )
 
@@ -16,7 +14,7 @@ class MessageMap(Model):
     id = fields.IntField(pk=True)
     chat_id = fields.BigIntField()
     msg_id = fields.BigIntField()
-    sent_msg_id = fields.BigIntField()
+    sent_msg_id = fields.BigIntField()  # TODO: переименовать в target_msg_id
     is_thread = fields.BooleanField(default=False)
     has_media = fields.BooleanField(default=False)
     # media_group_ids = fields.JSONField(null=True)
@@ -24,7 +22,7 @@ class MessageMap(Model):
     orig_msg: fields.ReverseRelation["OriginalMessage"]
 
     class Meta:
-        table = 'messageMap'
+        table = 'message_map'
 
 
 class OriginalMessage(Model):
@@ -36,7 +34,7 @@ class OriginalMessage(Model):
     )
 
     class Meta:
-        table = 'originalMessage'
+        table = 'original_message'
 
 
 class KeywordToRemove(Model):
@@ -55,29 +53,18 @@ class KeywordToSkip(Model):
         table = 'keywords_to_skip'
 
 
-class ChannelBypassSkip(Model):
-    id = fields.IntField(pk=True)
-    channel_id = fields.BigIntField(unique=True)
-
-    class Meta:
-        table = 'channel_bypass_skip'
-
-
-class ThreadBypassSkip(Model):
-    id = fields.IntField(pk=True)
-    thread_id = fields.BigIntField(unique=True)
-
-    class Meta:
-        table = 'thread_bypass_skip'
-
-
 class ForwardRule(Model):
     id = fields.IntField(pk=True)
-    source_channel = fields.BigIntField()
+    chat_id = fields.BigIntField()
     thread_id = fields.BigIntField(null=True)
-    dest_channel = fields.BigIntField()
-    dest_thread = fields.BigIntField(null=True)
+    target_chat_id = fields.BigIntField()
+    target_thread_id = fields.BigIntField(null=True)
+
+    # chat = fields.BooleanField(default=True)
+    skip = fields.BooleanField(default=True)
+
+    # enabled = fields.BooleanField(default=True)
 
     class Meta:
         table = 'forward_rules'
-        unique_together = (('source_channel', 'thread_id'),)
+        unique_together = (('chat_id', 'thread_id'),)

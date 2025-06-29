@@ -1,6 +1,7 @@
 from telethon import events
 
-from core import *
+from config import client, TOPICS_CHAT_ID
+from utils import *
 
 
 @client.on(events.NewMessage())
@@ -12,23 +13,21 @@ async def handle_message_forwarding(event):
     if chat_id not in await get_monitored_channels():
         return
 
-    reply_to_top_id = None
-    if event.reply_to:
-        if event.reply_to.reply_to_top_id:
-            reply_to_top_id = event.reply_to.reply_to_top_id
-        elif event.reply_to.forum_topic:
-            reply_to_top_id = event.reply_to.reply_to_msg_id
-
-    forward_targets = await get_forward_targets(chat_id, reply_to_top_id)
+    thread_id = get_thread_id(event)
+    forward_targets = await get_forward_targets(chat_id, thread_id)
     if not forward_targets:
+        return
+
+    is_skip = await get_bypass_skip(chat_id, thread_id)
+    if any(keyword in event.text for keyword in await get_keywords_to_skip()) and is_skip:
         return
 
     print("event: ", event)
     print("forward_targets", forward_targets)
-    # print()
 
     for target_id in forward_targets:
         target_chat_id = TOPICS_CHAT_ID if target_id > 0 else target_id
-        thread_id = target_id if target_id > 0 else None
+        target_thread_id = target_id if target_id > 0 else None
+        await send_message(event, target_chat_id, target_thread_id)
 
-        await send_message(target_chat_id, event, thread_id=thread_id)
+    print()

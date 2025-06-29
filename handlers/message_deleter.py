@@ -1,10 +1,7 @@
-import traceback
-
 from telethon import events
-from tortoise.exceptions import DoesNotExist
 
-from core import *
-from models import MessageMap
+from config import client, TOPICS_CHAT_ID
+from utils import *
 
 
 @client.on(events.MessageDeleted())
@@ -22,32 +19,12 @@ async def handle_message_delete(event):
 
     for target_id in forward_targets:
         target_chat_id = TOPICS_CHAT_ID if target_id > 0 else target_id
-        try:
-            for deleted_id in event.deleted_ids:
-                try:
-                    message_map_id = await MessageMap.get(
-                        chat_id=chat_id,
-                        msg_id=deleted_id,
-                        is_thread=True if target_id > 0 else False
-                    ).prefetch_related('orig_msg')
-                except DoesNotExist:
-                    continue
+        is_thread = target_id > 0
 
-                if message_map_id.has_media:
-                    await bot.edit_message_caption(
-                        chat_id=target_chat_id,
-                        message_id=message_map_id.sent_msg_id,
-                        caption=f"{message_map_id.orig_msg.text}\n\n❌ [УДАЛЕНО]"
-                    )
-                else:
-                    await bot.edit_message_text(
-                        chat_id=target_chat_id,
-                        message_id=message_map_id.sent_msg_id,
-                        text=f"{message_map_id.orig_msg.text}\n\n❌ [УДАЛЕНО]"
-                    )
+        for deleted_id in event.deleted_ids:
+            message_map = await safe_get_message_map(chat_id, deleted_id, is_thread)
+            if not message_map:
+                continue
 
-        except Exception:
-            print("\nDELETE ERROR:")
-            print("event: ", event)
-            print("FORWARD_RULES[chat_id]: ", get_forward_targets(chat_id))
-            print(traceback.format_exc())
+            updated_text = f"{message_map.orig_msg.text}\n\n❌ [УДАЛЕНО]"
+            await edit_forwarded_message(target_chat_id, message_map.sent_msg_id, updated_text, message_map.has_media)

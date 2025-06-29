@@ -2,8 +2,10 @@ import asyncio
 
 from tortoise import Tortoise
 
-from core import *
-from handlers import *
+from config import client, config, dp, bot
+from handlers import handlers, routers
+from scripts.init_db_config import init_config
+from utils import connect_to_session
 
 
 async def run_telethon_client():
@@ -49,6 +51,7 @@ async def on_shutdown() -> None:
 
 async def main() -> None:
     await init_db()
+    await init_config()
 
     await asyncio.gather(
         run_telethon_client(),
