@@ -19,18 +19,6 @@ def extract_filename(doc):
     )
 
 
-# async def _get_media_posts_in_group(chat, original_post, max_amp=10):
-#     if original_post.grouped_id is None:
-#         return [original_post] if original_post.media is not None else []
-#
-#     search_ids = [i for i in range(original_post.id - max_amp, original_post.id + max_amp + 1)]
-#     posts = await client.get_messages(chat, ids=search_ids)
-#     media = []
-#     for post in posts:
-#         if post is not None and post.grouped_id == original_post.grouped_id and post.media is not None:
-#             media.append(post)
-#     return media
-
 async def get_grouped_media(chat_id, post, max_amp=10):
     if not post.grouped_id:
         return [post] if post.media else []
@@ -82,7 +70,7 @@ async def handle_media_message(event, media_group, send_kwargs, target_chat_id, 
 
         if message.photo:
             sent = await try_send(bot.send_photo, **send_kwargs,
-                                         photo=BufferedInputFile(file, filename="photo.jpg"), caption=text)
+                                  photo=BufferedInputFile(file, filename="photo.jpg"), caption=text)
         elif message.sticker:
             name = extract_filename(event.media.document)
             sent = await bot.send_sticker(**send_kwargs, sticker=BufferedInputFile(file, filename=name))
@@ -93,10 +81,10 @@ async def handle_media_message(event, media_group, send_kwargs, target_chat_id, 
             )
             if is_animated:
                 sent = await try_send(bot.send_animation, **send_kwargs,
-                                             animation=BufferedInputFile(file, filename="animation.gif"), caption=text)
+                                      animation=BufferedInputFile(file, filename="animation.gif"), caption=text)
             else:
                 sent = await try_send(bot.send_video, **send_kwargs,
-                                             video=BufferedInputFile(file, filename="video.mp4"), caption=text)
+                                      video=BufferedInputFile(file, filename="video.mp4"), caption=text)
         elif message.voice:
             sent = await bot.send_voice(**send_kwargs, voice=BufferedInputFile(file, filename="voice.ogg"))
         elif message.audio:
@@ -104,22 +92,16 @@ async def handle_media_message(event, media_group, send_kwargs, target_chat_id, 
         elif message.document:
             name = extract_filename(event.media.document)
             sent = await try_send(bot.send_document, **send_kwargs,
-                                         document=BufferedInputFile(file, filename=name), caption=text)
+                                  document=BufferedInputFile(file, filename=name), caption=text)
         else:
             sent = await try_send(bot.send_message, **send_kwargs, text=text)
 
-    try:
-        messageMap = await MessageMap.create(
-            chat_id=event.chat_id,
-            msg_id=event.id,
-            sent_msg_id=sent.message_id,
-            is_thread=bool(thread_id),
-            has_media=True
-            # media_group_ids=[msg.message_id for msg in sent]
-        )
-        await OriginalMessage.create(text=event.text, message_map=messageMap)
-
-        print("Сообщение с картинкой отправлено!")
-    except Exception as e:
-        print("image", e)
-        print("event: ", event)
+    messageMap = await MessageMap.create(
+        chat_id=event.chat_id,
+        msg_id=event.id,
+        sent_msg_id=sent.message_id,
+        is_thread=bool(thread_id),
+        has_media=True
+        # media_group_ids=[msg.message_id for msg in sent]
+    )
+    await OriginalMessage.create(text=event.text, message_map=messageMap)

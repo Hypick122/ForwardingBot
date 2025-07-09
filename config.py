@@ -1,3 +1,6 @@
+import logging
+import logging_config
+
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -10,6 +13,7 @@ from telethon.sync import TelegramClient
 __all__ = (
     'TOPICS_CHAT_ID',
     'config',
+    'logger',
     'client',
     'bot',
     'dp'
@@ -31,6 +35,8 @@ class Settings(BaseSettings):
 
 
 config = Settings()
+
+logger = logging.getLogger(__name__)
 
 client = TelegramClient(
     config.SESSION_NAME,

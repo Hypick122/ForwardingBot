@@ -22,12 +22,7 @@ async def handle_message_forwarding(event):
     if any(keyword in event.text for keyword in await get_keywords_to_skip()) and is_skip:
         return
 
-    print("event: ", event)
-    print("forward_targets", forward_targets)
-
     for target_id in forward_targets:
         target_chat_id = TOPICS_CHAT_ID if target_id > 0 else target_id
         target_thread_id = target_id if target_id > 0 else None
         await send_message(event, target_chat_id, target_thread_id)
-
-    print()

@@ -14,7 +14,7 @@ async def handle_message_delete(event):
         return
 
     forward_targets = await get_forward_targets(chat_id)
-    if not forward_targets:
+    if not forward_targets:  # TODO: исправь удаление в топиках
         return
 
     for target_id in forward_targets:

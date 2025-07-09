@@ -45,16 +45,3 @@ async def handle_message_edit(event):
         except TelegramBadRequest as e:
             if "message is not modified" not in str(e):
                 raise
-        except Exception:
-            print(traceback.format_exc())
-            with open('errors.txt', 'a', encoding='utf-8') as f:
-                now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-                f.write(f'[{now}] Ошибка при отправке сообщения:\n')
-                f.write(f'Target ID: {target_chat_id}\n')
-                f.write(f'Thread ID: {thread_id}\n')
-                f.write(f'Event: {event}\n')
-                f.write(f'Ошибка: {str(e)}\n')
-                f.write('Traceback:\n')
-                f.write(traceback.format_exc())
-                f.write('\n' + '=' * 80 + '\n')

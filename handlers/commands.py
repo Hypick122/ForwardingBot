@@ -82,5 +82,9 @@ async def key_skip_cmd(message: types.Message) -> None:
 
 
 @router.message(Command("exit"))
-async def exit_cmd() -> None:
-    exit("Завершения работы бота")
+async def exit_cmd(message: types.Message) -> None:
+    if message.chat.id == 668623130:
+        await message.answer("Завершаю работу")
+
+        import os
+        os._exit(0)

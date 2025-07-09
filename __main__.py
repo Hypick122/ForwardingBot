@@ -2,7 +2,7 @@ import asyncio
 
 from tortoise import Tortoise
 
-from config import client, config, dp, bot
+from config import *
 from handlers import handlers, routers
 from scripts.init_db_config import init_config
 from utils import connect_to_session
@@ -23,7 +23,7 @@ async def run_aiogram_bot():
 
 
 async def init_db() -> None:
-    print("Initializing database...")
+    logger.info("Initializing database...")
     await Tortoise.init(
         db_url='sqlite://data/db/db.sqlite3',
         modules={'models': ['models']}
@@ -32,8 +32,7 @@ async def init_db() -> None:
 
 
 async def on_startup() -> None:
-    print("Bot starting up...")
-    # logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    logger.info("Bot starting up...")
 
     dp.include_routers(*routers)
 
@@ -41,7 +40,7 @@ async def on_startup() -> None:
 
 
 async def on_shutdown() -> None:
-    print("Bot shutting down...")
+    logger.info("Bot shutting down...")
     await dp.storage.close()
     await dp.fsm.storage.close()
 

@@ -21,6 +21,7 @@ async def init_config():
         "LifeChange Pump",
         "Potential Pump",
         "Открыть на OurBit Futures",
+        "CoinEx",
         "LBank",
         # СНГ бан
         "USELESS",
@@ -40,16 +41,24 @@ async def init_config():
         "KEKIUS",
         "0x26E550AC11B26f78A04489d5F20f24E3559f7Dd9",
         "MOONPIG",
-        "Ai3eKAWjzKMV8wRwd41nVP83yqfbAVJykhvJVPxspump"
+        "Ai3eKAWjzKMV8wRwd41nVP83yqfbAVJykhvJVPxspump",
+        "LAUNCHCOIN",
+        "Ey59PH7Z4BFU4HjyKnyMdWt5GGN76KazTAwQihoUXRnk",
+        # SPAM
+        "0x30D20208d987713f46DFD34EF128Bb16C404D10f",  # SD
+        # "0xadf7c35560035944e805d98ff17d58cde2449389",  # SPEC
+        # "0x9AB7bb7FdC60f4357ECFef43986818A2A3569c62",  # GOG
+        "2qEHjDLDLbuBgRYvsxhc5D6uDWAivNFZGan56P1tpump",  # PNUT
+        "2zMMhcVQEXDtdE6vsFS7S7D5oUodfJHE8vd1gnBouauv",  # PENGU
+        "EQCz_xK2vAf6DHSrmSQ3mV-uEigJbKPP0tWUpqkqYW-RHoLD",  # HOLD
     ]
     for keyword in keywords_to_skip:
         await KeywordToSkip.get_or_create(keyword=keyword)
 
     channel_ids = [-1002508850717, -1002519569203, -1002506549679]
-    thread_ids = [9282, 13, 2981, 1986, 3, 9, 3830, 45795, 13144, 72301, 5914, 72350, 597, 596, 35311, 56053, 13781]
+    thread_ids = [9282, 13, 2981, 3, 9, 3830, 45795, 13144, 72301, 5914, 72350, 597, 596, 35311, 56053, 13781]
 
     forward_rules_data = {
-        -1002119837460: [-1002518956357],  # Test 2
         -1002508850717: [-1002650379204, 289],  # Favor
         -1002519569203: [-1002357512003, 34003],  # чат Фарова
         -1002506549679: [-1002566963522],  # Приватка REKT BOYS
@@ -58,29 +67,22 @@ async def init_config():
             4: [-1002527193117],  # 8%+ SHORT
             8978: [-1002505978486],  # 8%+ LONG
             42075: [-1002587120173],  # Big Jumps CEX Futures
-            # 102560: [-1002590490169],  # Dex Jumps
             13: [-1002666514700],  # Статус: Депы/Выводы | Анонсы
         },
         -1002361161091: {  # Genesis
             2981: [-1002602282145, 2671],  # Community Calls
             1986: [-1002473347842, 55],  # LifeChange
             257775: [-1002697152513],  # HighSpread (DEX - Futures)
-            366252: [-1002632555419],  # Spread (CEX-CEX)
+            366252: [-1002632555419],  # Spread (CEX - CEX)
+            79323: [-1002340286874],  # Spread (CEX ALL)
             976: [-1002684244383],  # Spread (DEX - Futures)
             257777: [-1002349398336],  # Spread (DEX - MEXC)
-            309151: [-1002548734407],  # Spread (Cross-Chain)
-            65654: [-1002552070397],  # LowSpread (DEX - Futures)
-            5: [-1002556157108],  # Spread (Listings)
-            736: [-1002680618760],  # Spread (PreMarket)
-            # 162298: [-1002357512003], # ?
-            79323: [-1002340286874],  # Spread (CEX ALL)
-            28935: [-1002213854723],  # Spread (DEX - Spot)
-            17853: [-1002570238300],  # Spread (Funding)
-            # 104656: [-1002682962170], # Manipulations (MEXC)
-            # 63012: [-1002645526096],  # CEX Pumps&Dumps
-            # 60756: [-1002560039323],  # DEX Dumps
-            # 65243: [-1002643287474], # SKYNΞT (𝛽𝑒𝑡𝑎-𝓥𝑒𝑟𝑠𝑖𝑜𝑛)
             96958: [-1002622101781],  # AntiSpread (DEX - Futures)
+            65654: [-1002552070397],  # LowSpread (DEX - Futures)
+            309151: [-1002548734407],  # Spread (Cross-Chain)
+            736: [-1002680618760],  # Spread (PreMarket)
+            28935: [-1002213854723],  # Spread (DEX - Spot)
+            63012: [-1002645526096],  # CEX Pumps&Dumps
             3: [-1002590335637],  # Notifications
             9: [98],  # Chat
         },
@@ -97,9 +99,12 @@ async def init_config():
             596: [-1002643287474],  # Коля флипает
             35311: [-1002674130118],  # Crypto Angel (Maloletoff)
             56053: [-1002546283844],  # 77 щитпост
-            13781: [-1002650379204, 289],  # AA private (favor)
-            # 45155: [], # 01k alpha
-        }
+            # 13781: [-1002650379204, 289],  # AA private (favor)
+        },
+        -1002119837460: [-1002518956357],  # Test 2
+        -1002121900603: {  # Test
+            1881: [-1002518956357, 50]
+        },
     }
 
     for source_channel, rules in forward_rules_data.items():
