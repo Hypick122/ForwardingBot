@@ -1,5 +1,5 @@
 import logging
-import logging_config
+import logging.config
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -19,9 +19,45 @@ __all__ = (
     'dp'
 )
 
+TOPICS_CHAT_ID = -1002676817892
+
 load_dotenv()
 
-TOPICS_CHAT_ID = -1002676817892
+LOGGING_CONFIG = {
+    'version': 1,
+    'formatters': {
+        'standard': {
+            'format': '%(asctime)s - %(levelname)s - %(message)s'
+        },
+        'advanced': {
+            'format': '%(asctime)s %(name)s:%(levelname)s:%(message)s'
+        }
+    },
+    'handlers': {
+        'stdout': {
+            'class': 'logging.StreamHandler',
+            'stream': 'ext://sys.stdout',
+            'level': 'INFO',
+            'formatter': 'standard'
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'level': 'WARNING',
+            'formatter': 'advanced',
+            'filename': 'app.log',
+            'encoding': 'utf-8'
+        }
+    },
+    'loggers': {
+        '': {
+            'handlers': ['stdout', 'file'],
+            'level': 'INFO'
+        }
+    }
+}
+
+logging.config.dictConfig(LOGGING_CONFIG)
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -35,8 +71,6 @@ class Settings(BaseSettings):
 
 
 config = Settings()
-
-logger = logging.getLogger(__name__)
 
 client = TelegramClient(
     config.SESSION_NAME,

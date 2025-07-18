@@ -94,16 +94,13 @@ async def append_user_signature(event, chat_id, thread_id, text):
     if not allow:
         return text
 
-    logger.debug("append_user_signature")
-    user = await client.get_entity(event.from_id.user_id)
-    logger.debug("user", user)
-    # try:
-    #     user = await client.get_entity(event.sender_id)
-    # except Exception:
-    #     try:
-    #         user = await client.get_entity(event.from_id.user_id)
-    #     except Exception:
-    #         return text
+    try:
+        user = await client.get_entity(event.sender_id)
+    except Exception:
+        try:
+            user = await client.get_entity(event.from_id.user_id)
+        except Exception:
+            return text
 
     if not isinstance(user, User):
         return text
