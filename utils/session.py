@@ -12,10 +12,10 @@ async def connect_to_session() -> None:
 
     if not await client.is_user_authorized():
         logger.info("[*] Не авторизован. Запрос кода...")
-        await client.send_code_request(config.PHONE)
+        await client.send_code_request(params.PHONE)
         code = input('Код из Telegram: ')
         try:
-            await client.sign_in(config.PHONE, code)
+            await client.sign_in(params.PHONE, code)
         except SessionPasswordNeededError:
             password = input('Пароль 2FA: ')
             await client.sign_in(password=password)

@@ -1,11 +1,11 @@
 from telethon import events
 
-from config import client, TOPICS_CHAT_ID
+from config import client
 from utils import *
 
 
 @client.on(events.MessageDeleted())
-async def handle_message_delete(event):
+async def handle_message_delete(event):  # TODO: удаление в топиках неисправна
     if not isinstance(event, events.MessageDeleted.Event):
         return
 
@@ -14,17 +14,18 @@ async def handle_message_delete(event):
         return
 
     forward_targets = await get_forward_targets(chat_id)
-    if not forward_targets:  # TODO: исправь удаление в топиках
+    if not forward_targets:
         return
 
-    for target_id in forward_targets:
-        target_chat_id = TOPICS_CHAT_ID if target_id > 0 else target_id
-        is_thread = target_id > 0
+    for deleted_id in event.deleted_ids:
+        message_map = await safe_get_message_map(chat_id, deleted_id)
+        if not message_map:
+            continue
 
-        for deleted_id in event.deleted_ids:
-            message_map = await safe_get_message_map(chat_id, deleted_id, is_thread)
-            if not message_map:
-                continue
-
-            updated_text = f"{message_map.orig_msg.text}\n\n❌ [УДАЛЕНО]"
-            await edit_forwarded_message(target_chat_id, message_map.sent_msg_id, updated_text, message_map.has_media)
+        updated_text = f"{message_map.orig_msg.text}\n\n❌ [УДАЛЕНО]"
+        await edit_forwarded_message(
+            forward_targets.target_chat_id,
+            message_map.target_msg_id,
+            updated_text,
+            message_map.has_media
+        )

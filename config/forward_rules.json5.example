@@ -1,0 +1,24 @@
+{
+  // example channel or chat
+  "-1006666666666": [
+    {
+      "thread_id": null,
+      "target_chat_id": -1006666666666,
+      "skip": false
+    }
+  ],
+  // example chat with topics
+  "-1006666666666": [
+    // topics
+    {
+      "thread_id": 11,
+      "target_chat_id": -1006666666666,
+      "skip": false
+    },
+    {
+      "thread_id": 12,
+      "target_chat_id": -1006666666666,
+      "skip": true
+    }
+  ]
+}

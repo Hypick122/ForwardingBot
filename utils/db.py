@@ -16,11 +16,8 @@ async def get_monitored_channels():
     return await ForwardRule.all().distinct().values_list('chat_id', flat=True)
 
 
-async def get_forward_targets(channel, thread_id=None):
-    rule = await ForwardRule.filter(chat_id=channel, thread_id=thread_id).first()
-    if not rule:
-        return None
-    return [rule.target_chat_id] if not rule.target_thread_id else [rule.target_chat_id, rule.target_thread_id]
+async def get_forward_targets(channel, thread_id=None) -> ForwardRule:
+    return await ForwardRule.filter(chat_id=channel, thread_id=thread_id).first()
 
 
 async def get_keywords_to_remove():
@@ -36,8 +33,8 @@ async def get_bypass_skip(chat_id, thread_id=None):
     return forward_rule.skip
 
 
-async def safe_get_message_map(chat_id, msg_id, is_thread):
+async def safe_get_message_map(chat_id, msg_id):
     try:
-        return await MessageMap.get(chat_id=chat_id, msg_id=msg_id, is_thread=is_thread).prefetch_related('orig_msg')
+        return await MessageMap.get(chat_id=chat_id, msg_id=msg_id).prefetch_related('orig_msg')
     except DoesNotExist:
         return None

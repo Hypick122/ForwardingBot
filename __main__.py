@@ -10,7 +10,7 @@ from utils import connect_to_session
 
 async def run_telethon_client():
     await connect_to_session()
-    await client.start(config.PHONE)
+    await client.start(params.PHONE)
     for handler in handlers:
         client.add_event_handler(handler)
     await client.run_until_disconnected()
@@ -58,5 +58,8 @@ async def main() -> None:
     )
 
 
-if __name__ == '__main__':
-    asyncio.run(main())
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        logger.warning("Bot stopped manually")

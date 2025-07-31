@@ -14,8 +14,7 @@ class MessageMap(Model):
     id = fields.IntField(pk=True)
     chat_id = fields.BigIntField()
     msg_id = fields.BigIntField()
-    sent_msg_id = fields.BigIntField()  # TODO: переименовать в target_msg_id
-    is_thread = fields.BooleanField(default=False)
+    target_msg_id = fields.BigIntField()
     has_media = fields.BooleanField(default=False)
     # media_group_ids = fields.JSONField(null=True)
 
@@ -58,12 +57,8 @@ class ForwardRule(Model):
     chat_id = fields.BigIntField()
     thread_id = fields.BigIntField(null=True)
     target_chat_id = fields.BigIntField()
-    target_thread_id = fields.BigIntField(null=True)
 
-    # chat = fields.BooleanField(default=True)
     skip = fields.BooleanField(default=True)
-
-    # enabled = fields.BooleanField(default=True)
 
     class Meta:
         table = 'forward_rules'
