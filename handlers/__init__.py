@@ -1,7 +1,9 @@
+from telethon.events import NewMessage, MessageEdited, MessageDeleted
+
+from . import commands
 from .message_deleter import handle_message_delete
 from .message_editor import handle_message_edit
 from .message_forwarder import handle_message_forwarding
-from . import commands
 
 __all__ = (
     'handlers',
@@ -9,9 +11,9 @@ __all__ = (
 )
 
 handlers = [
-    handle_message_delete,
-    handle_message_edit,
-    handle_message_forwarding
+    (handle_message_forwarding, NewMessage()),
+    (handle_message_edit, MessageEdited()),
+    (handle_message_delete, MessageDeleted())
 ]
 
 routers = [

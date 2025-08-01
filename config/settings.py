@@ -4,7 +4,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 __all__ = (
     'params',
-    'ADMIN_ID'
 )
 
 load_dotenv()
@@ -16,10 +15,10 @@ class Settings(BaseSettings):
     API_HASH: SecretStr
     SESSION_NAME: str
     BOT_TOKEN: SecretStr
+    ADMIN_ID: int
+    DB_URL: str
 
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
 
 
 params = Settings()
-
-ADMIN_ID = 668623130

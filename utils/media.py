@@ -12,7 +12,7 @@ __all__ = (
 )
 
 
-def extract_filename(doc):
+def extract_filename(doc) -> str:
     return next(
         (a.file_name for a in doc.attributes if isinstance(a, DocumentAttributeFilename)),
         "file" + get_extension(doc)
@@ -46,11 +46,11 @@ def build_input_media(msg, file: bytes, text: str):
             caption=text
         )
 
-    logger.error(f"build_input_media: нет элемента\nmsg: {msg}")
+    logger.error(f"build_input_media: нет элемента\nmsg: {msg}")  # TODO: убрать
     return None
 
 
-async def handle_single_message(event, send_kwargs, text):
+async def handle_single_message(event, send_kwargs, text: str):
     from utils.message import try_send
 
     message = event.message
@@ -86,7 +86,7 @@ async def handle_single_message(event, send_kwargs, text):
     return await try_send(bot.send_message, **send_kwargs, text=text)
 
 
-async def handle_media_message(event, media_group, send_kwargs, target_chat_id):
+async def handle_media_message(event, media_group, send_kwargs, target_chat_id: int):
     from utils.message import add_user_signature
 
     message = event.message

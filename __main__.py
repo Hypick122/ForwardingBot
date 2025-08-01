@@ -9,14 +9,19 @@ from utils import connect_to_session
 
 
 async def run_telethon_client():
+    logger.info(f"Starting Telethon client...")
     await connect_to_session()
     await client.start(params.PHONE)
-    for handler in handlers:
-        client.add_event_handler(handler)
+
+    for handler, event in handlers:
+        logger.debug(f"Registering handler: {handler.__name__} ({type(event).__name__})")
+        client.add_event_handler(handler, event)
+
     await client.run_until_disconnected()
 
 
 async def run_aiogram_bot():
+    logger.info(f"Starting Aiogram polling...")
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
@@ -25,14 +30,14 @@ async def run_aiogram_bot():
 async def init_db() -> None:
     logger.info("Initializing database...")
     await Tortoise.init(
-        db_url='sqlite://data/db/db.sqlite3',
+        db_url=params.DB_URL,
         modules={'models': ['models']}
     )
     await Tortoise.generate_schemas()
 
 
 async def on_startup() -> None:
-    logger.info("Bot starting up...")
+    logger.info("Aiogram bot is starting up...")
 
     dp.include_routers(*routers)
 
@@ -40,7 +45,7 @@ async def on_startup() -> None:
 
 
 async def on_shutdown() -> None:
-    logger.info("Bot shutting down...")
+    logger.info("Shutting down Aiogram bot...")
     await dp.storage.close()
     await dp.fsm.storage.close()
 
@@ -63,3 +68,6 @@ if __name__ == "__main__":
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         logger.warning("Bot stopped manually")
+        import os
+
+        os._exit(0)

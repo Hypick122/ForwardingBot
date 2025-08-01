@@ -1,30 +1,24 @@
-from telethon import events
-
-from config import client
+from models import ForwardRule
 from utils import *
 
 
-@client.on(events.MessageDeleted())
-async def handle_message_delete(event):  # TODO: удаление в топиках неисправна
-    if not isinstance(event, events.MessageDeleted.Event):
-        return
-
+async def handle_message_delete(event):
     chat_id = event.chat_id
-    if chat_id not in await get_monitored_channels():
+    if not await in_monitored_channels(chat_id):
         return
 
-    forward_targets = await get_forward_targets(chat_id)
-    if not forward_targets:
+    fwd_rule = await ForwardRule.filter(chat_id=chat_id).first()  # TODO: Возможно изменить на thread=null в конфиге
+    if not fwd_rule:
         return
 
     for deleted_id in event.deleted_ids:
-        message_map = await safe_get_message_map(chat_id, deleted_id)
+        message_map = await get_message_map_safe(chat_id, deleted_id)
         if not message_map:
             continue
 
         updated_text = f"{message_map.orig_msg.text}\n\n❌ [УДАЛЕНО]"
         await edit_forwarded_message(
-            forward_targets.target_chat_id,
+            fwd_rule.target_chat_id,
             message_map.target_msg_id,
             updated_text,
             message_map.has_media

@@ -1,24 +1,25 @@
+// thread_id (optional, default: null)
+// skip (optional, default: true)
+
 {
-  // example channel or chat
-  "-1006666666666": [
+  // Example: channel or chat without topics
+  "-1001234567890": [
     {
-      "thread_id": null,
-      "target_chat_id": -1006666666666,
+      "target_chat_id": -1009876543210,
       "skip": false
     }
   ],
-  // example chat with topics
-  "-1006666666666": [
+  // Example: chat with topics
+  "-1001122334455": [
     // topics
     {
       "thread_id": 11,
-      "target_chat_id": -1006666666666,
+      "target_chat_id": -1009988776655,
       "skip": false
     },
     {
       "thread_id": 12,
-      "target_chat_id": -1006666666666,
-      "skip": true
+      "target_chat_id": -1009988776655
     }
   ]
 }

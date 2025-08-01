@@ -1,7 +1,7 @@
 from aiogram import Router, F, types
 from aiogram.filters import Command
 
-from config import ADMIN_ID
+from config import params
 from models import *
 from utils import *
 
@@ -23,11 +23,11 @@ async def config_cmd(message: types.Message) -> None:
 
     parts = []
 
-    keywords_to_remove = await get_keywords_to_remove()
+    keywords_to_remove = await get_removal_keywords()
     parts.append("🔴 <b>KeywordToRemove:</b>")
     parts.extend([f"  • <code>{keyword}</code>" for keyword in keywords_to_remove])
 
-    keywords_to_skip = await get_keywords_to_skip()
+    keywords_to_skip = await get_skip_keywords()
     parts.append("\n🟡 <b>KeywordToSkip:</b>")
     parts.extend([f"  • <code>{keyword}</code>" for keyword in keywords_to_skip])
 
@@ -75,7 +75,7 @@ async def key_skip_cmd(message: types.Message) -> None:
 
 @router.message(Command("exit"))
 async def exit_cmd(message: types.Message) -> None:
-    if message.chat.id == ADMIN_ID:
+    if message.chat.id == params.ADMIN_ID:
         await message.answer("Завершаю работу")
 
         import os

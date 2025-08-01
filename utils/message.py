@@ -1,5 +1,6 @@
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from telethon.events import NewMessage
 from telethon.tl.types import ReplyInlineMarkup, KeyboardButtonUrl, User
 from tortoise.exceptions import DoesNotExist
 
@@ -17,7 +18,7 @@ __all__ = (
 
 
 async def send_message(event, target_chat_id: int):
-    from utils import get_grouped_media, handle_media_message, get_keywords_to_remove
+    from utils import get_grouped_media, handle_media_message, get_removal_keywords
 
     message = event.message
     text = message.text or ""
@@ -47,17 +48,17 @@ async def send_message(event, target_chat_id: int):
 
     send_kwargs["disable_web_page_preview"] = True
 
-    cleaned_text = remove_keywords_lines(text, await get_keywords_to_remove())
-    full_text = await add_user_signature(event, target_chat_id, cleaned_text)
+    cleaned_text = remove_keywords_lines(text, await get_removal_keywords())
+    text = await add_user_signature(event, target_chat_id, cleaned_text)
 
-    sent = await try_send(bot.send_message, **send_kwargs, text=full_text)
+    sent = await try_send(bot.send_message, **send_kwargs, text=text)
 
     messageMap = await MessageMap.create(
         chat_id=event.chat_id,
         msg_id=event.id,
         target_msg_id=sent.message_id
     )
-    await OriginalMessage.create(text=full_text, message_map=messageMap)
+    await OriginalMessage.create(text=text, message_map=messageMap)
 
 
 def telethon_to_aiogram_markup(markup: ReplyInlineMarkup) -> InlineKeyboardMarkup:
@@ -69,26 +70,15 @@ def telethon_to_aiogram_markup(markup: ReplyInlineMarkup) -> InlineKeyboardMarku
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
-def get_thread_id(event):  # TODO: исправить для default topic
-    if event.chat_id == -1002529622048:
-        if event.reply_to:
-            if event.reply_to.reply_to_top_id and event.reply_to.forum_topic:
-                return event.reply_to.reply_to_top_id
-            elif event.reply_to.forum_topic:
-                return event.reply_to.reply_to_msg_id
-            else:
-                return 1
+def get_thread_id(event: NewMessage.Event) -> int | None:
+    if event.reply_to:
+        if event.reply_to.reply_to_top_id:
+            return event.reply_to.reply_to_top_id
+        elif event.reply_to.forum_topic:
+            return event.reply_to.reply_to_msg_id
+
+    elif event.is_group and event.is_channel:  # default topic
         return 1
-
-    if not event.reply_to:
-        return None
-
-    reply = event.reply_to
-
-    if reply.reply_to_top_id:
-        return reply.reply_to_top_id
-    elif reply.forum_topic:
-        return reply.reply_to_msg_id
 
     return None
 
@@ -100,13 +90,11 @@ def remove_keywords_lines(text: str, keywords: list[str]) -> str:
     )
 
 
-async def add_user_signature(event, chat_id, text):
-    allow = chat_id in [
+async def add_user_signature(event, chat_id: int, text: str) -> str:
+    if chat_id not in [
         -1002357512003, -1002602282145, -1002556157108,
         -1002680618760, -1002560039323, -1002546283844
-    ]
-
-    if not allow:
+    ]:
         return text
 
     try:
@@ -135,7 +123,7 @@ async def try_send(send_func, *args, **kwargs):
         return await send_func(*args, **kwargs)
 
 
-async def edit_forwarded_message(target_chat_id, target_msg_id, text, has_media):
+async def edit_forwarded_message(target_chat_id: int, target_msg_id: int, text: str, has_media: bool):
     if has_media:
         await try_send(bot.edit_message_caption, chat_id=target_chat_id, message_id=target_msg_id, caption=text)
     else:

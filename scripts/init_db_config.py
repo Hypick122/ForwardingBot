@@ -1,7 +1,10 @@
+import asyncio
 from pathlib import Path
+from typing import Any
 
 import json5
 
+from config import logger
 from models import *
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -13,36 +16,45 @@ KEYWORDS_SKIP_PATH = CONFIG_DIR / "keywords_to_skip.json5"
 
 
 async def init_config():
-    await _init_keywords_to_remove()
-    await _init_keywords_to_skip()
-    await _init_forward_rules()
+    await asyncio.gather(
+        _init_keywords(KEYWORDS_REMOVE_PATH, KeywordToRemove),
+        _init_keywords(KEYWORDS_SKIP_PATH, KeywordToSkip),
+        _init_forward_rules()
+    )
 
 
-async def _init_keywords_to_remove():
-    with open(KEYWORDS_REMOVE_PATH, "r", encoding="utf-8") as f:
-        keywords = json5.load(f)
-
-    for keyword in keywords:
-        await KeywordToRemove.get_or_create(keyword=keyword)
+def _load_json5(path: Path) -> Any:
+    with path.open("r", encoding="utf-8") as f:
+        return json5.load(f)
 
 
-async def _init_keywords_to_skip():
-    with open(KEYWORDS_SKIP_PATH, "r", encoding="utf-8") as f:
-        keywords = json5.load(f)
+async def _init_keywords(path: Path, model) -> None:
+    keywords = _load_json5(path)
+    if not keywords:
+        return
 
-    for keyword in keywords:
-        await KeywordToSkip.get_or_create(keyword=keyword)
+    tasks = [
+        model.get_or_create(keyword=kw)
+        for kw in keywords
+    ]
+    await asyncio.gather(*tasks)
+    logger.info(f"Загружено {len(tasks)} ключевых слов в {model.__name__}.")
 
 
 async def _init_forward_rules():
-    with open(FORWARD_RULES_PATH, "r", encoding="utf-8") as f:
-        rules_raw = json5.load(f)
+    rules_raw = _load_json5(FORWARD_RULES_PATH)
 
-    for chat_id, data in rules_raw.items():
-        for rule in data:
-            await ForwardRule.get_or_create(
-                chat_id=chat_id,
-                thread_id=rule["thread_id"],
-                target_chat_id=rule["target_chat_id"],
-                skip=rule["skip"]
+    tasks = []
+    for chat_id, rules in rules_raw.items():
+        for rule in rules:
+            tasks.append(
+                ForwardRule.get_or_create(
+                    chat_id=int(chat_id),
+                    thread_id=rule.get("thread_id", None),
+                    target_chat_id=rule["target_chat_id"],
+                    skip=rule.get("skip", True)
+                )
             )
+
+    await asyncio.gather(*tasks)
+    logger.info(f"Загружено {len(tasks)} правил пересылки.")
