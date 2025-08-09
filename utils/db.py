@@ -3,17 +3,12 @@ from tortoise.exceptions import DoesNotExist
 from models import *
 
 __all__ = (
-    'in_monitored_channels',
     'get_forward_rule',
     'get_skip_flag',
     'get_removal_keywords',
-    'get_skip_keywords',
+    'check_skip_keywords',
     'get_message_map_safe'
 )
-
-
-async def in_monitored_channels(chat_id: int) -> bool:
-    return chat_id in await ForwardRule.all().distinct().values_list('chat_id', flat=True)
 
 
 async def get_forward_rule(chat_id: int, thread_id: int | None = None) -> ForwardRule | None:
@@ -29,8 +24,9 @@ async def get_removal_keywords() -> list[str]:
     return list(await KeywordToRemove.all().values_list('keyword', flat=True))
 
 
-async def get_skip_keywords() -> list[str]:
-    return list(await KeywordToSkip.all().values_list('keyword', flat=True))
+async def check_skip_keywords(text: str) -> list[str]:
+    skip_keywords = list(await KeywordToSkip.all().values_list('keyword', flat=True))
+    return any(keyword.lower() in text.lower() for keyword in skip_keywords)
 
 
 async def get_message_map_safe(chat_id: int, msg_id: int) -> MessageMap | None:

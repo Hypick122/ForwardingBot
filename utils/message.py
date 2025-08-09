@@ -1,67 +1,91 @@
-from aiogram.exceptions import TelegramBadRequest
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from telethon.events import NewMessage
-from telethon.tl.types import ReplyInlineMarkup, KeyboardButtonUrl, User
-from tortoise.exceptions import DoesNotExist
+import re
 
-from config import client, bot
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, MessageEntity
+from telethon.events import NewMessage
+from telethon.tl.types import MessageEntityBold, MessageEntityItalic, MessageEntityTextUrl, MessageEntityUrl, \
+    MessageEntityCode, MessageEntityPre, MessageEntityMention, MessageEntityHashtag, MessageEntityCashtag, \
+    MessageEntityMentionName, MessageEntityUnderline, MessageEntityStrike, MessageEntityBotCommand, MessageEntityPhone, \
+    MessageEntityEmail, ReplyInlineMarkup, KeyboardButtonUrl, User, Channel
+
+from config import bot, logger
 from models import *
 
 __all__ = (
-    'send_message',
+    'build_code_entities',
+    'telethon_entities_to_aiogram',
+    'parse_exchange_links',
+    'parse_okx_link',
+    'telethon_markup_to_aiogram',
     'remove_keywords_lines',
     'get_thread_id',
-    'add_user_signature',
-    'try_send',
+    'add_author',
     'edit_forwarded_message',
 )
 
 
-async def send_message(event, target_chat_id: int):
-    from utils import get_grouped_media, handle_media_message, get_removal_keywords
-
-    message = event.message
-    text = message.text or ""
-
-    send_kwargs = {
-        "chat_id": target_chat_id,
-        "reply_markup": telethon_to_aiogram_markup(event.reply_markup) if event.reply_markup else None
-    }
-
-    if event.reply_to:
-        try:
-            message_map = await MessageMap.get(
-                chat_id=event.chat_id,
-                msg_id=event.reply_to.reply_to_msg_id
-            )
-            send_kwargs["reply_to_message_id"] = message_map.target_msg_id
-        except DoesNotExist:
-            pass
-
-    if message.media:
-        media_group = await get_grouped_media(event.chat_id, message)
-        if len(media_group) > 1 and message.id == media_group[0].id:
-            await handle_media_message(event, media_group, send_kwargs, target_chat_id)
-        elif len(media_group) <= 1:
-            await handle_media_message(event, [message], send_kwargs, target_chat_id)
-        return
-
-    send_kwargs["disable_web_page_preview"] = True
-
-    cleaned_text = remove_keywords_lines(text, await get_removal_keywords())
-    text = await add_user_signature(event, target_chat_id, cleaned_text)
-
-    sent = await try_send(bot.send_message, **send_kwargs, text=text)
-
-    messageMap = await MessageMap.create(
-        chat_id=event.chat_id,
-        msg_id=event.id,
-        target_msg_id=sent.message_id
-    )
-    await OriginalMessage.create(text=text, message_map=messageMap)
+def build_code_entities(text: str, tickers: list[str]) -> list[MessageEntity]:
+    entities = []
+    for ticker in tickers:
+        start = 0
+        while True:
+            pos = text.find(ticker, start)
+            if pos == -1:
+                break
+            entities.append(MessageEntity(type="code", offset=pos, length=len(ticker)))
+            start = pos + len(ticker)
+    return entities
 
 
-def telethon_to_aiogram_markup(markup: ReplyInlineMarkup) -> InlineKeyboardMarkup:
+def telethon_entities_to_aiogram(entities):
+    aiogram_entities = []
+
+    for entity in entities or []:
+        kwargs = {
+            "offset": entity.offset,
+            "length": entity.length,
+        }
+
+        if isinstance(entity, MessageEntityBold):
+            kwargs["type"] = "bold"
+        elif isinstance(entity, MessageEntityItalic):
+            kwargs["type"] = "italic"
+        elif isinstance(entity, MessageEntityCode):
+            kwargs["type"] = "code"
+        elif isinstance(entity, MessageEntityPre):
+            kwargs["type"] = "pre"
+        elif isinstance(entity, MessageEntityUnderline):
+            kwargs["type"] = "underline"
+        elif isinstance(entity, MessageEntityStrike):
+            kwargs["type"] = "strikethrough"
+        elif isinstance(entity, MessageEntityUrl):
+            kwargs["type"] = "url"
+        elif isinstance(entity, MessageEntityTextUrl):
+            kwargs["type"] = "text_link"
+            kwargs["url"] = entity.url.replace("/uk/", "/ru/").replace("/uk-UA/", "/ru-RU/")
+        elif isinstance(entity, MessageEntityMention):
+            kwargs["type"] = "mention"
+        elif isinstance(entity, MessageEntityHashtag):
+            kwargs["type"] = "hashtag"
+        elif isinstance(entity, MessageEntityCashtag):
+            kwargs["type"] = "cashtag"
+        elif isinstance(entity, MessageEntityMentionName):
+            kwargs["type"] = "text_mention"
+            kwargs["user"] = entity.user
+        elif isinstance(entity, MessageEntityBotCommand):
+            kwargs["type"] = "bot_command"
+        elif isinstance(entity, MessageEntityPhone):
+            kwargs["type"] = "phone_number"
+        elif isinstance(entity, MessageEntityEmail):
+            kwargs["type"] = "email"
+        else:
+            continue
+
+        aiogram_entities.append(MessageEntity(**kwargs))
+
+    return aiogram_entities
+
+
+def telethon_markup_to_aiogram(markup: ReplyInlineMarkup) -> InlineKeyboardMarkup:
     keyboard = [
         [InlineKeyboardButton(text=btn.text, url=btn.url)
          for btn in row.buttons if isinstance(btn, KeyboardButtonUrl)]
@@ -70,13 +94,115 @@ def telethon_to_aiogram_markup(markup: ReplyInlineMarkup) -> InlineKeyboardMarku
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
-def get_thread_id(event: NewMessage.Event) -> int | None:
-    if event.reply_to:
-        if event.reply_to.reply_to_top_id:
-            return event.reply_to.reply_to_top_id
-        elif event.reply_to.forum_topic:
-            return event.reply_to.reply_to_msg_id
+def parse_exchange_links(text: str):
+    patterns = {
+        'MEXC': {
+            'spot': r"(?<!futures\.)mexc\.com/.*?exchange/([A-Z0-9_]+)",
+            'futures': r"futures.mexc\.com/.*?exchange/([A-Z0-9_]+)",
+        },
+        'GATE.IO': {
+            'spot': r"gate\.(?:io|com)/.*?trade/([A-Z0-9_]+)",
+            'futures': r"gate\.(?:io|com)/.*?futures(?:_trade)?/USDT/([A-Z0-9_]+)"
+        },
+        'BYBIT': {
+            'spot': r"bybit\.com/.*?spot/([A-Z0-9_/-]+)",
+            'futures': r"bybit\.com/.*?usdt/([A-Z0-9_]+)"
+        },
+        'BITGET': {
+            'spot': r"bitget\.com/.*?spot/([A-Z0-9_]+)",
+            'futures': r"bitget\.com/.*?futures/usdt/([A-Z0-9_]+)"
+        },
+        'KUCOIN': {
+            'spot': r"kucoin\.com/.*?trade/([A-Z0-9_-]+)",
+            'futures': r"kucoin\.com/.*?futures/([A-Z0-9_-]+)"
+        },
+        'BINGX': {
+            'spot': r"bingx\.com/.*?spot/([A-Z0-9_-]+)",
+            'futures': r"bingx\.com/.*?(?:perpetual|futures/forward)/([A-Z0-9_-]+)"
+        }
+    }
 
+    results = []
+
+    for exch, regex_dict in patterns.items():
+        for trade_type, regex in regex_dict.items():
+            matches = re.findall(regex, text, re.IGNORECASE)
+            for m in matches:
+                ticker = re.sub(r'[_/-]', '', m.upper())  # убираем _, -, /
+                if trade_type == 'futures':
+                    ticker += '.p'
+                results.append(f"{exch}:{ticker}")
+
+    return results
+
+
+def parse_okx_link(text):
+    NETWORK_MAP = {
+        'sol': 'solana',
+        'eth': 'ethereum',
+        'erc20': 'ethereum',
+        'ethereum': 'ethereum',
+        'bsc': 'bsc',
+        'binance': 'bsc',
+        'solana': 'solana',
+        'sui': 'sui',
+        'arbitrum': 'arbitrum-one',
+        'avalanche': 'avalanche',
+    }
+    sui_contract_pattern = r'(0x[a-fA-F0-9]{64}::[a-zA-Z0-9_]+::[a-zA-Z0-9_]+)'
+    general_contract_pattern = r'(0x[a-fA-F0-9]{40}|[a-zA-Z0-9]{30,64})'
+
+    gmgn_pattern = rf'https?://(?:www\.)?gmgn\.ai/([^/]+)/token/({sui_contract_pattern}|{general_contract_pattern})'
+
+    match = re.search(gmgn_pattern, text)
+    if match:
+        network_raw = match.group(1).lower()
+        contract = match.group(2)
+        network = NETWORK_MAP.get(network_raw, network_raw)
+        return f"https://web3.okx.com/ru/token/{network}/{contract}"
+
+    sui_in_text = re.search(r'(0x[a-fA-F0-9]{64}::[a-zA-Z0-9_]+::[a-zA-Z0-9_]+)', text)
+    if sui_in_text:
+        contract = sui_in_text.group(1)
+        return f"https://web3.okx.com/ru/token/sui/{contract}"
+
+    contract_match = re.search(general_contract_pattern, text)
+    if contract_match:
+        contract = contract_match.group(1)
+        text_lower = text.lower()
+
+        network_match = re.search(
+            r'(bsc|erc20|ethereum|solana|sui|arbitrum|avalanche)[^\n\r:]*[:\s]+\s*' + re.escape(contract.lower()),
+            text_lower)
+        if network_match:
+            network_raw = network_match.group(1)
+        else:
+            if 'erc20' in text_lower or 'ethereum' in text_lower or ' eth ' in text_lower:
+                network_raw = 'ethereum'
+            elif 'bsc' in text_lower or 'binance' in text_lower:
+                network_raw = 'bsc'
+            elif 'solana' in text_lower or ' sol ' in text_lower:
+                network_raw = 'solana'
+            elif 'sui' in text_lower:
+                network_raw = 'sui'
+            elif 'arbitrum' in text_lower:
+                network_raw = 'arbitrum'
+            elif 'avalanche' in text_lower:
+                network_raw = 'avalanche'
+            else:
+                network_raw = 'ethereum'
+
+        network = NETWORK_MAP.get(network_raw, network_raw)
+        return f"https://web3.okx.com/ru/token/{network}/{contract}"
+
+    return None
+
+
+def get_thread_id(event: NewMessage.Event) -> int | None:
+    if event.reply_to and event.reply_to.reply_to_top_id:
+        return event.reply_to.reply_to_top_id
+    elif event.reply_to and event.reply_to.forum_topic:
+        return event.reply_to.reply_to_msg_id
     elif event.is_group and event.is_channel:  # default topic
         return 1
 
@@ -90,42 +216,41 @@ def remove_keywords_lines(text: str, keywords: list[str]) -> str:
     )
 
 
-async def add_user_signature(event, chat_id: int, text: str) -> str:
-    if chat_id not in [
-        -1002357512003, -1002602282145, -1002556157108,
-        -1002680618760, -1002560039323, -1002546283844
-    ]:
+def display_id(obj):
+    return f"@{getattr(obj, 'username', None)}" if getattr(obj, "username", None) else f"ID {obj.id}"
+
+
+async def add_author(event, fwd_rule: ForwardRule, text: str) -> str:
+    if not fwd_rule.show_author:
         return text
 
     try:
-        user = await client.get_entity(event.from_id.user_id)
-    except Exception:
+        sender = await event.get_sender()
+    except Exception as e:
+        logger.error("sender error: ", e)
         return text
 
-    if not isinstance(user, User):
-        return text
+    if isinstance(sender, User):
+        if sender.bot:
+            return f"{text}\n\nBy bot {display_id(sender)}"
+        else:
+            first_name = sender.first_name or ""
+            last_name = sender.last_name or ""
+            username = sender.username or (sender.usernames[0].username if sender.usernames else "")
+            full_name = f"{first_name} {last_name} {'(@' + username + ')' if username else ''}".strip()
+            if not username:
+                full_name = f" {first_name} {last_name} (ID: {sender.id})"
 
-    if user.bot:
-        name = "bot"
-    elif user.username:
-        name = f"@{user.username}"
+            return f"{text}\nBy {full_name}"
+    elif isinstance(sender, Channel):
+        return f"{text}\nBy channel {display_id(sender)}"
     else:
-        name = (user.first_name or '') + ' ' + (user.last_name or '')
-
-    return f"{text}\n\nBy {name.strip() or f'(ID) {event.from_id.user_id}'}"
-
-
-async def try_send(send_func, *args, **kwargs):
-    try:
-        return await send_func(*args, **kwargs)
-    except TelegramBadRequest:
-        kwargs["parse_mode"] = None
-        return await send_func(*args, **kwargs)
+        return text
 
 
 async def edit_forwarded_message(target_chat_id: int, target_msg_id: int, text: str, has_media: bool):
     if has_media:
-        await try_send(bot.edit_message_caption, chat_id=target_chat_id, message_id=target_msg_id, caption=text)
+        await bot.edit_message_caption(chat_id=target_chat_id, message_id=target_msg_id, caption=text)
     else:
-        await try_send(bot.edit_message_text, chat_id=target_chat_id, message_id=target_msg_id, text=text,
-                       disable_web_page_preview=True)
+        await bot.edit_message_text(chat_id=target_chat_id, message_id=target_msg_id, text=text,
+                                    disable_web_page_preview=True)

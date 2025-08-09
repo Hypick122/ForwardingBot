@@ -47,7 +47,7 @@ async def key_remove_cmd(message: types.Message) -> None:
     if len(message.text.split()) < 2:
         return
 
-    keyword = message.text.split()[1]
+    keyword = message.text[11:]
     exists = await KeywordToRemove.filter(keyword=keyword).first()
     if exists:
         await exists.delete()
@@ -63,7 +63,7 @@ async def key_skip_cmd(message: types.Message) -> None:
     if len(message.text.split()) < 2:
         return
 
-    keyword = message.text.split()[1]
+    keyword = message.text[9:]
     exists = await KeywordToSkip.filter(keyword=keyword).first()
     if exists:
         await exists.delete()

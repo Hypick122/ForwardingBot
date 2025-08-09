@@ -57,7 +57,9 @@ class ForwardRule(Model):
     chat_id = fields.BigIntField()
     thread_id = fields.BigIntField(null=True)
     target_chat_id = fields.BigIntField()
+    target_thread_id = fields.BigIntField(null=True)
 
+    show_author = fields.BooleanField(default=True)
     skip = fields.BooleanField(default=True)
 
     class Meta:

@@ -5,9 +5,6 @@ from utils import *
 
 async def handle_message_edit(event):
     chat_id = event.chat_id
-    if not await in_monitored_channels(chat_id):
-        return
-
     thread_id = get_thread_id(event)
     fwd_rule = await get_forward_rule(chat_id, thread_id)
     if not fwd_rule:
@@ -18,8 +15,8 @@ async def handle_message_edit(event):
         return
 
     try:
-        cleaned_text = remove_keywords_lines(event.text, await get_removal_keywords())
-        text = await add_user_signature(event, fwd_rule.target_chat_id, cleaned_text)
+        cleaned_text = remove_keywords_lines(event.text, await get_removal_keywords())  # TODO: заменить на raw_text или добавить entities в бд
+        text = await add_author(event, fwd_rule, cleaned_text)
         await edit_forwarded_message(
             fwd_rule.target_chat_id,
             message_map.target_msg_id,

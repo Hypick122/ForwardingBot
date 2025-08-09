@@ -41,20 +41,34 @@ async def _init_keywords(path: Path, model) -> None:
     logger.info(f"Загружено {len(tasks)} ключевых слов в {model.__name__}.")
 
 
+def parse_target(targets_raw):
+    targets = targets_raw if isinstance(targets_raw, list) else [targets_raw]
+    result = [{
+        'chat_id': t if isinstance(t, (int, str)) else t['chat_id'],
+        'thread_id': None if isinstance(t, (int, str)) else t.get('thread_id')
+    } for t in targets]
+
+    return result
+
+
 async def _init_forward_rules():
     rules_raw = _load_json5(FORWARD_RULES_PATH)
 
     tasks = []
     for chat_id, rules in rules_raw.items():
         for rule in rules:
-            tasks.append(
-                ForwardRule.get_or_create(
-                    chat_id=int(chat_id),
-                    thread_id=rule.get("thread_id", None),
-                    target_chat_id=rule["target_chat_id"],
-                    skip=rule.get("skip", True)
+            targets = parse_target(rule['target'])
+            for target in targets:
+                tasks.append(
+                    ForwardRule.get_or_create(
+                        chat_id=int(chat_id),
+                        thread_id=rule.get("thread_id", None),
+                        target_chat_id=target["chat_id"],
+                        target_thread_id=target['thread_id'],
+                        show_author=rule.get("show_author", False),
+                        skip=rule.get("skip", True)
+                    )
                 )
-            )
 
     await asyncio.gather(*tasks)
     logger.info(f"Загружено {len(tasks)} правил пересылки.")

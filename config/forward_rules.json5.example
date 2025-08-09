@@ -1,5 +1,7 @@
-// thread_id (optional, default: null)
-// skip (optional, default: true)
+// thread_id (int, optional, default: null)
+// show_author (bool, optional, default: false)
+// whitelist_ids (, optional, default: null) # TODO: добавить
+// skip (bool, optional, default: true)
 
 {
   // Example: channel or chat without topics

@@ -1,6 +1,5 @@
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from telethon.sync import TelegramClient
 
@@ -21,6 +20,6 @@ client = TelegramClient(
 
 bot = Bot(
     token=params.BOT_TOKEN.get_secret_value(),
-    default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN)
+    default=DefaultBotProperties(parse_mode=None)
 )
 dp = Dispatcher(storage=MemoryStorage())
